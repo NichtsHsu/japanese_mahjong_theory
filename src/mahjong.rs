@@ -1,78 +1,81 @@
 //! This mod defines all structures for an entire mahjong game.
 
 /// Type of a tile.
-///
-/// # Glossary between English and Japanese
-/// | English | Japanese | Romaji |
-/// | ---- | ---- | ---- |
-/// | Tile | 牌 | hai |
-/// | Character| 萬子 | manzu |
-/// | Dot | 筒子 | pinzu |
-/// | Bamboo | 索子 | souzu |
-/// | Honor | 字牌 | jihai |
-#[derive(Copy, Clone, Debug, std::cmp::PartialEq, std::cmp::Eq, std::cmp::PartialOrd, std::cmp::Ord)]
-pub enum Tile {
-    Character(u8),
-    Dot(u8),
-    Bamboo(u8),
-    Honor(u8),
+/// # Abbreviation
+/// * Manzu -> m
+/// * Pinzu -> p
+/// * Souzu -> s
+/// * Jihai -> z
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Hai {
+    Manzu(u8),
+    Pinzu(u8),
+    Souzu(u8),
+    Jihai(u8),
 }
 
 /// Type of a meld.
-///
-/// # Glossary between English and Japanese
-/// | English | Japanese | Romaji |
-/// | ---- | ---- | ---- |
-/// | Meld | 面子 | mentsu |
-/// | Chow | 順子 | juntsu |
-/// | Pong | 刻子 | koutsu |
-/// | Kong | 槓子 | kantsu |
+/// # Examples
+/// * Juntsu: 2s 3s 4s
+/// * Koutsu: 1z 1z 1z
+/// * Kantsu: 6m 6m 6m 6m
 #[derive(Copy, Clone, Debug)]
-pub enum Meld {
-    Chow(Tile, Tile, Tile),
-    Pong(Tile),
-    Kong(Tile),
+pub enum Mentsu {
+    Juntsu(Hai, Hai, Hai),
+    Koutsu(Hai),
+    Kantsu(Hai),
 }
 
-/// Eyes.
-///
-/// # Glossary between English and Japanese
-/// | English | Japanese | Romaji |
-/// | ---- | ---- | ---- |
-/// | Eyes | 雀頭 | jantou |
-pub struct Eyes(Tile);
+/// Two different tiles wait for one.
+/// # Examples
+/// * 1s 2s wait for 3s
+/// * 4p 6p wait for 5p
+/// * 7m 8m wait for 6m and 9m
+pub struct Taatsu(Hai);
+
+// Tow same tiles.
+pub struct Toitsu(Hai);
 
 /// Tiles on hand.
 ///
 /// # Member
-/// * on_hand_tiles : tiles not formed melds by seizing another's discard.
-/// * seizing_melds : melds formed by seizing another's discard.
+/// * menzen : tiles not formed melds by seizing another's discard.
+/// * fuuro : melds formed by seizing another's discard.
+/// 
+/// # Examples
+/// ```rust
+/// let mut input = String::new();
+/// io::stdin().read_line(&mut input).expect("error: unable to read user input");
+/// println!("{}", mahjong::Tehai::from(input.trim().to_string()));
+/// ```
 #[derive(Debug, Clone)]
-pub struct Hand {
-    on_hand_tiles: Result<Vec<Tile>, String>,
-    seizing_melds: Vec<Meld>,
+pub struct Tehai {
+    pub menzen: Result<Vec<Hai>, String>,
+    pub fuuro: Vec<Mentsu>,
 }
 
-impl ToString for Tile {
+impl ToString for Hai {
     fn to_string(&self) -> String {
         match self {
-            Tile::Character(num) => format!("{}m", num),
-            Tile::Dot(num) => format!("{}p", num),
-            Tile::Bamboo(num) => format!("{}s", num),
-            Tile::Honor(num) => format!("{}z", num),
+            Hai::Manzu(num) => format!("{}m", num),
+            Hai::Pinzu(num) => format!("{}p", num),
+            Hai::Souzu(num) => format!("{}s", num),
+            Hai::Jihai(num) => format!("{}z", num),
         }
     }
 }
 
-impl ToString for Meld {
+impl ToString for Mentsu {
     fn to_string(&self) -> String {
         match self {
-            Meld::Chow(a, b, c) => format!("[{}{}{}]", a.to_string(), b.to_string(), c.to_string()),
-            Meld::Pong(a) => {
+            Mentsu::Juntsu(a, b, c) => {
+                format!("[{}{}{}]", a.to_string(), b.to_string(), c.to_string())
+            }
+            Mentsu::Koutsu(a) => {
                 let tile = a.to_string();
                 format!("[{}{}{}]", tile, tile, tile)
             }
-            Meld::Kong(a) => {
+            Mentsu::Kantsu(a) => {
                 let tile = a.to_string();
                 format!("[{}{}{}{}]", tile, tile, tile, tile)
             }
@@ -80,43 +83,37 @@ impl ToString for Meld {
     }
 }
 
-impl Hand {
-    pub fn new(on_hand_tiles: Result<Vec<Tile>, String>, seizing_melds: Vec<Meld>) -> Self {
-        Hand {
-            on_hand_tiles,
-            seizing_melds,
-        }
-    }
-
-    pub fn empty() -> Self {
-        Hand {
-            on_hand_tiles: Err("No tiles on hand!".to_string()),
-            seizing_melds: vec![],
-        }
+impl Tehai {
+    pub fn new(menzen: Result<Vec<Hai>, String>, fuuro: Vec<Mentsu>) -> Self {
+        Tehai { menzen, fuuro }
     }
 }
 
-impl From<String> for Hand {
+impl From<String> for Tehai {
     fn from(string: String) -> Self {
-        crate::analyzer::parse_input_tiles(string)
+        crate::analyzer::input::parse(string)
     }
 }
 
-impl ToString for Hand {
-    fn to_string(&self) -> String {
+/// Simple output for tiles.
+/// # Example
+/// `1m2m3m4p4p4p7p5s6s6s7s[1z1z1z]`
+impl std::fmt::Display for Tehai {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut format_string = String::new();
-        match &self.on_hand_tiles {
-            Ok(tiles) => {
-                for tile in tiles.iter() {
-                    format_string += &tile.to_string();
+
+        match &self.menzen {
+            Ok(menzen_vec) => {
+                for hai in menzen_vec.iter() {
+                    format_string += &hai.to_string();
                 }
             }
-            Err(error) => return error.clone(),
+            Err(error) => format_string = error.clone(),
         };
-        for meld in &self.seizing_melds {
-            format_string += &meld.to_string();
+        for mentsu in &self.fuuro {
+            format_string += &mentsu.to_string();
         }
 
-        format_string
+        write!(f, "{}", format_string)
     }
 }

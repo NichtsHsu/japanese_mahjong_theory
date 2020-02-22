@@ -1,170 +1,212 @@
-use crate::mahjong;
+pub mod input {
+    use crate::mahjong::*;
 
-pub fn parse_input_tiles(string: String) -> mahjong::Hand {
-    let mut on_hand_tiles = vec![];
-    let mut seizing_melds = vec![];
-    let mut tile_stash = vec![];
-    let mut meld_stash = vec![];
-    let mut on_meld = false;
+    pub fn parse(string: String) -> Tehai {
+        use Hai::*;
 
-    let push_into_tiles = |tile_type,
-                           index,
-                           stash: &mut Vec<char>,
-                           output: &mut Vec<mahjong::Tile>|
-     -> Result<(), String> {
-        if stash.len() == 0 {
-            Err(format!(
-                "Unused type character '{}' at index {}.",
-                tile_type, index
-            ))
-        } else {
-            for tile in stash.iter() {
-                output.push(match tile_type {
-                    'm' => mahjong::Tile::Character(*tile as u8 - 48),
-                    'p' => mahjong::Tile::Dot(*tile as u8 - 48),
-                    's' => mahjong::Tile::Bamboo(*tile as u8 - 48),
-                    'z' => mahjong::Tile::Honor(*tile as u8 - 48),
-                    _ => mahjong::Tile::Character(0), // Never reach here.
-                })
+        let mut menzen = vec![];
+        let mut fuuro = vec![];
+        let mut hai_stash = vec![];
+        let mut menzen_stash = vec![];
+        let mut on_mentsu = false;
+
+        let push_into_hai_vec = |tile_type,
+                                 index,
+                                 stash: &mut Vec<char>,
+                                 output: &mut Vec<Hai>|
+         -> Result<(), String> {
+            if stash.len() == 0 {
+                Err(format!(
+                    "Unused type character '{}' at index {}.",
+                    tile_type, index
+                ))
+            } else {
+                for tile in stash.iter() {
+                    output.push(match tile_type {
+                        'm' => Manzu(*tile as u8 - 48),
+                        'p' => Pinzu(*tile as u8 - 48),
+                        's' => Souzu(*tile as u8 - 48),
+                        'z' => Jihai(*tile as u8 - 48),
+                        _ => Manzu(0), // Never reach here.
+                    })
+                }
+                stash.clear();
+                Ok(())
             }
-            stash.clear();
-            Ok(())
-        }
-    };
+        };
 
-    let mut push_into_meld = |index, stash: &mut Vec<mahjong::Tile>| -> Result<(), String> {
-        if let Some(meld) = check_meld(stash) {
-            seizing_melds.push(meld);
-            Ok(())
-        } else {
-            Err(format!("Not a valid meld on '[]' before index {}.", index))
-        }
-    };
+        let mut push_into_fuuro = |index, stash: &mut Vec<Hai>| -> Result<(), String> {
+            if let Some(meld) = check_mentsu(stash) {
+                fuuro.push(meld);
+                Ok(())
+            } else {
+                Err(format!("Not a valid meld on '[]' before index {}.", index))
+            }
+        };
 
-    for (id, ch) in string.chars().enumerate() {
-        match ch {
-            'm' | 'p' | 's' | 'z' => {
-                if on_meld {
-                    if let Err(error) = push_into_tiles(ch, id, &mut tile_stash, &mut meld_stash) {
-                        return mahjong::Hand::new(Err(error), seizing_melds);
+        for (id, ch) in string.chars().enumerate() {
+            match ch {
+                'm' | 'p' | 's' | 'z' => {
+                    if on_mentsu {
+                        if let Err(error) =
+                            push_into_hai_vec(ch, id, &mut hai_stash, &mut menzen_stash)
+                        {
+                            return Tehai::new(Err(error), fuuro);
+                        }
+                    } else {
+                        if let Err(error) = push_into_hai_vec(ch, id, &mut hai_stash, &mut menzen) {
+                            return Tehai::new(Err(error), fuuro);
+                        }
                     }
-                } else {
-                    if let Err(error) = push_into_tiles(ch, id, &mut tile_stash, &mut on_hand_tiles)
-                    {
-                        return mahjong::Hand::new(Err(error), seizing_melds);
+                }
+                '1'..='9' => hai_stash.push(ch),
+                '[' => {
+                    if on_mentsu {
+                        return Tehai::new(
+                            Err(format!("Second '[' found at index {}.", id)),
+                            fuuro,
+                        );
                     }
+                    if hai_stash.len() > 0 {
+                        return Tehai::new(
+                            Err(format!(
+                                "Need 'm' 'p' 's' 'z' but find '[' at index {}.",
+                                id
+                            )),
+                            fuuro,
+                        );
+                    };
+                    on_mentsu = true;
                 }
-            }
-            '1'..='9' => tile_stash.push(ch),
-            '[' => {
-                if on_meld {
-                    return mahjong::Hand::new(
-                        Err(format!("Second '[' found at index {}.", id)),
-                        seizing_melds,
-                    );
+                ']' => {
+                    if !on_mentsu {
+                        return Tehai::new(
+                            Err(format!("Unmatched ']' found at index {}.", id)),
+                            fuuro,
+                        );
+                    }
+                    if hai_stash.len() > 0 {
+                        return Tehai::new(
+                            Err(format!(
+                                "Need 'm' 'p' 's' 'z' but find ']' at index {}.",
+                                id
+                            )),
+                            fuuro,
+                        );
+                    };
+                    if let Err(error) = push_into_fuuro(id, &mut menzen_stash) {
+                        return Tehai::new(Err(error), fuuro);
+                    }
+                    on_mentsu = false;
                 }
-                if tile_stash.len() > 0 {
-                    return mahjong::Hand::new(
-                        Err(format!(
-                            "Need 'm' 'p' 's' 'z' but find '[' at index {}.",
-                            id
-                        )),
-                        seizing_melds,
-                    );
-                };
-                on_meld = true;
-            }
-            ']' => {
-                if !on_meld {
-                    return mahjong::Hand::new(
-                        Err(format!("Unmatched ']' found at index {}.", id)),
-                        seizing_melds,
-                    );
+                _ => {
+                    return Tehai::new(
+                        Err(format!("Unknown character '{}' at index {}.", ch, id)),
+                        fuuro,
+                    )
                 }
-                if tile_stash.len() > 0 {
-                    return mahjong::Hand::new(
-                        Err(format!(
-                            "Need 'm' 'p' 's' 'z' but find ']' at index {}.",
-                            id
-                        )),
-                        seizing_melds,
-                    );
-                };
-                if let Err(error) = push_into_meld(id, &mut meld_stash) {
-                    return mahjong::Hand::new(Err(error), seizing_melds);
-                }
-                on_meld = false;
-            }
-            _ => {
-                return mahjong::Hand::new(
-                    Err(format!("Unknown character '{}' at index {}.", ch, id)),
-                    seizing_melds,
-                )
             }
         }
+
+        menzen.sort();
+        Tehai::new(Ok(menzen), fuuro)
     }
 
-    on_hand_tiles.sort();
-    mahjong::Hand::new(Ok(on_hand_tiles), seizing_melds)
-}
+    /// Check if tiles in range.
+    /// # Examples
+    /// ```rust
+    /// use mahjong::Hai::*;
+    /// assert_eq!(check_hai_in_range(vec![Manzu(1), Souzu(9), Jihai(7)]), true);
+    /// assert_eq!(check_hai_in_range(vec![Manzu(4), Jihai(8)]), false);
+    /// ```
+    pub fn check_hai_in_range(hai_vec: &Vec<Hai>) -> bool {
+        use Hai::*;
+        for hai in hai_vec.iter() {
+            match hai {
+                Manzu(num) | Pinzu(num) | Souzu(num) => {
+                    if *num < 1 || *num > 9 {
+                        return false;
+                    }
+                }
+                Jihai(num) => {
+                    if *num < 1 || *num > 7 {
+                        return false;
+                    }
+                }
+            }
+        }
 
-pub fn check_meld(tiles: &Vec<mahjong::Tile>) -> Option<mahjong::Meld> {
-    use mahjong::Meld::*;
-    use mahjong::Tile::*;
+        true
+    }
 
-    fn check_chow(mut a: u8, mut b: u8, mut c: u8) -> Option<(u8, u8, u8)> {
-        if a > b {
-            std::mem::swap(&mut a, &mut b)
+    /// Check what mentsu type of input.
+    /// # Examples
+    /// ```rust
+    /// use mahjong::Hai::*;
+    /// use mahjong::Mentsu::*;
+    /// assert_eq!(check_mentsu(vec![Manzu(1), Manzu(2), Manzu(3)]), Juntsu(Manzu(1), Manzu(2), Manzu(3)));
+    /// assert_eq!(check_mentsu(vec![Pinzu(7), Pinzu(7), Pinzu(7)]), Koutsu(Pinzu(7)));
+    /// assert_eq!(check_mentsu(vec![Jihai(8), Jihai(8), Jihai(8)]), None);
+    /// ```
+    pub fn check_mentsu(hai_vec: &Vec<Hai>) -> Option<Mentsu> {
+        use Hai::*;
+        use Mentsu::*;
+
+        fn check_juntsu(mut a: u8, mut b: u8, mut c: u8) -> Option<(u8, u8, u8)> {
+            if a > b {
+                std::mem::swap(&mut a, &mut b)
+            }
+            if a > c {
+                std::mem::swap(&mut a, &mut c)
+            }
+            if b > c {
+                std::mem::swap(&mut b, &mut c)
+            }
+            if a + 1 == b && b + 1 == c {
+                Some((a, b, c))
+            } else {
+                None
+            }
         }
-        if a > c {
-            std::mem::swap(&mut a, &mut c)
-        }
-        if b > c {
-            std::mem::swap(&mut b, &mut c)
-        }
-        if a + 1 == b && b + 1 == c {
-            Some((a, b, c))
+        if !check_hai_in_range(hai_vec) {
+            None
+        } else if hai_vec.len() == 4 {
+            if hai_vec[0] == hai_vec[1] && hai_vec[0] == hai_vec[2] && hai_vec[0] == hai_vec[3] {
+                Some(Kantsu(hai_vec[0]))
+            } else {
+                None
+            }
+        } else if hai_vec.len() == 3 {
+            if hai_vec[0] == hai_vec[1] && hai_vec[0] == hai_vec[2] {
+                Some(Koutsu(hai_vec[0]))
+            } else {
+                match (hai_vec[0], hai_vec[1], hai_vec[2]) {
+                    (Manzu(a), Manzu(b), Manzu(c)) => {
+                        if let Some((a, b, c)) = check_juntsu(a, b, c) {
+                            Some(Juntsu(Manzu(a), Manzu(b), Manzu(c)))
+                        } else {
+                            None
+                        }
+                    }
+                    (Pinzu(a), Pinzu(b), Pinzu(c)) => {
+                        if let Some((a, b, c)) = check_juntsu(a, b, c) {
+                            Some(Juntsu(Pinzu(a), Pinzu(b), Pinzu(c)))
+                        } else {
+                            None
+                        }
+                    }
+                    (Souzu(a), Souzu(b), Souzu(c)) => {
+                        if let Some((a, b, c)) = check_juntsu(a, b, c) {
+                            Some(Juntsu(Souzu(a), Souzu(b), Souzu(c)))
+                        } else {
+                            None
+                        }
+                    }
+                    _ => None,
+                }
+            }
         } else {
             None
         }
-    }
-
-    if tiles.len() == 4 {
-        if tiles[0] == tiles[1] && tiles[0] == tiles[2] && tiles[0] == tiles[3] {
-            Some(Kong(tiles[0]))
-        } else {
-            None
-        }
-    } else if tiles.len() == 3 {
-        if tiles[0] == tiles[1] && tiles[0] == tiles[2] {
-            Some(Pong(tiles[0]))
-        } else {
-            match (tiles[0], tiles[1], tiles[2]) {
-                (Character(a), Character(b), Character(c)) => {
-                    if let Some((a, b, c)) = check_chow(a, b, c) {
-                        Some(Chow(Character(a), Character(b), Character(c)))
-                    } else {
-                        None
-                    }
-                }
-                (Dot(a), Dot(b), Dot(c)) => {
-                    if let Some((a, b, c)) = check_chow(a, b, c) {
-                        Some(Chow(Dot(a), Dot(b), Dot(c)))
-                    } else {
-                        None
-                    }
-                }
-                (Bamboo(a), Bamboo(b), Bamboo(c)) => {
-                    if let Some((a, b, c)) = check_chow(a, b, c) {
-                        Some(Chow(Bamboo(a), Bamboo(b), Bamboo(c)))
-                    } else {
-                        None
-                    }
-                }
-                _ => None,
-            }
-        }
-    } else {
-        None
     }
 }

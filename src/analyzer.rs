@@ -13,7 +13,7 @@ pub mod input {
     /// * shorter: `123445m4445p8s[111z]`
     /// * out of order: `45p8s144m[111z]25m44p3m`
     ///
-    /// Note that only 3*k+2 tiles(2, 5, 8, 11, 14, 17, 20...) can be parse.
+    /// Note that only 3*k+2 tiles out of '[]'(2, 5, 8, 11, 14, 17, 20...) can be parse.
     ///
     /// # Examples
     /// ```rust
@@ -288,12 +288,20 @@ pub mod shanten {
                             if !last_hai_used {
                                 last_hai_used = true;
                                 decomposer.toitsu(Toitsu { 0: *cur });
+                            } else {
+                                decomposer.ukihai(Ukihai { 0: *cur });
                             }
                         } else {
+                            if !last_hai_used {
+                                decomposer.chiitoutsu(*last_hai);
+                            }
                             last_hai = cur;
                             last_hai_used = false;
                         }
                     } else {
+                        if !last_hai_used {
+                            decomposer.chiitoutsu(*last_hai);
+                        }
                         break;
                     }
                 }
@@ -336,13 +344,16 @@ pub mod shanten {
                         yaochuupai_value = yaochuupai_iter.next();
                         yaochuupai_iter_changed = true;
                     } else if lhs > rhs {
+                        decomposer.ukihai(Ukihai { 0: *rhs });
                         menzen_value = menzen_iter.next();
                     } else if lhs == rhs {
                         if yaochuupai_iter_changed {
-                            decomposer.ukihai(Ukihai { 0: *lhs });
+                            decomposer.kokushimusou(*rhs);
                         } else if !toitsu_included {
                             toitsu_included = true;
-                            decomposer.ukihai(Ukihai { 0: *lhs });
+                            decomposer.kokushimusou(*rhs);
+                        } else {
+                            decomposer.ukihai(Ukihai { 0: *rhs });
                         }
                         yaochuupai_iter_changed = false;
                         menzen_value = menzen_iter.next();
@@ -385,6 +396,7 @@ pub mod shanten {
         toitsu_vec: Vec<Toitsu>,
         taatsu_vec: Vec<Taatsu>,
         ukihai_vec: Vec<Ukihai>,
+        chiitoutsu_kokushimusou_valid_tile_vec: Vec<Hai>,
         hourakei: Hourakei,
     }
 
@@ -395,6 +407,7 @@ pub mod shanten {
                 toitsu_vec: vec![],
                 taatsu_vec: vec![],
                 ukihai_vec: vec![],
+                chiitoutsu_kokushimusou_valid_tile_vec: vec![],
                 hourakei: Hourakei::Mentsute,
             }
         }
@@ -416,6 +429,16 @@ pub mod shanten {
 
         fn ukihai(&mut self, ukihai: Ukihai) -> &mut Self {
             self.ukihai_vec.push(ukihai);
+            self
+        }
+
+        fn chiitoutsu(&mut self, hai: Hai) -> &mut Self {
+            self.chiitoutsu_kokushimusou_valid_tile_vec.push(hai);
+            self
+        }
+
+        fn kokushimusou(&mut self, hai: Hai) -> &mut Self {
+            self.chiitoutsu_kokushimusou_valid_tile_vec.push(hai);
             self
         }
 
@@ -457,9 +480,17 @@ pub mod shanten {
                         - taatsu_num as i32;
                 }
                 Hourakei::Chiitoitsu => {
-                    return (hai_number / 2) as i32 - 1 - self.toitsu_vec.len() as i32
+                    return hai_number as i32
+                        - 1
+                        - 2 * self.toitsu_vec.len() as i32
+                        - std::cmp::min(
+                            self.chiitoutsu_kokushimusou_valid_tile_vec.len(),
+                            7 - self.toitsu_vec.len(),
+                        ) as i32;
                 }
-                Hourakei::Kokushimusou => return 13 - self.ukihai_vec.len() as i32,
+                Hourakei::Kokushimusou => {
+                    return 13 - self.chiitoutsu_kokushimusou_valid_tile_vec.len() as i32;
+                }
             }
         }
     }
@@ -469,39 +500,79 @@ pub mod shanten {
             let mut mentsu_string = String::new();
             let mut toitsu_string = String::new();
             let mut taatsu_string = String::new();
+            let mut chiitoutsu_kokushimusou_valid_tile_string = String::new();
             let mut ukihai_string = String::new();
             let hourakei_string;
 
-            for mentsu in &self.mentsu_vec {
-                mentsu_string += &mentsu.to_string();
-                mentsu_string += " ";
+            if self.mentsu_vec.len() > 0 {
+                mentsu_string = String::from("面子:");
+
+                for mentsu in &self.mentsu_vec {
+                    mentsu_string += &mentsu.to_string();
+                    mentsu_string += " ";
+                }
+                mentsu_string += "\n";
             }
 
-            for toitsu in &self.toitsu_vec {
-                toitsu_string += &toitsu.to_string();
-                toitsu_string += " ";
+            if self.toitsu_vec.len() > 0 {
+                toitsu_string = String::from("对子:");
+
+                for toitsu in &self.toitsu_vec {
+                    toitsu_string += &toitsu.to_string();
+                    toitsu_string += " ";
+                }
+                toitsu_string += "\n";
             }
 
-            for taatsu in &self.taatsu_vec {
-                taatsu_string += &taatsu.to_string();
-                taatsu_string += " ";
+            if self.taatsu_vec.len() > 0 {
+                taatsu_string = String::from("搭子:");
+
+                for taatsu in &self.taatsu_vec {
+                    taatsu_string += &taatsu.to_string();
+                    taatsu_string += " ";
+                }
+                taatsu_string += "\n";
             }
 
-            for ukihai in &self.ukihai_vec {
-                ukihai_string += &ukihai.to_string();
-                ukihai_string += " ";
+            if self.ukihai_vec.len() > 0 {
+                ukihai_string = String::from("浮牌:");
+
+                for ukihai in &self.ukihai_vec {
+                    ukihai_string += &ukihai.to_string();
+                    ukihai_string += " ";
+                }
+                ukihai_string += "\n";
+            }
+
+            if self.chiitoutsu_kokushimusou_valid_tile_vec.len() > 0 {
+                chiitoutsu_kokushimusou_valid_tile_string =
+                    String::from("七対子/国士無双の有効牌:");
+
+                for chiitoutsu_kokushimusou_valid_tile in
+                    &self.chiitoutsu_kokushimusou_valid_tile_vec
+                {
+                    chiitoutsu_kokushimusou_valid_tile_string +=
+                        &chiitoutsu_kokushimusou_valid_tile.to_string();
+                    chiitoutsu_kokushimusou_valid_tile_string += " ";
+                }
+                chiitoutsu_kokushimusou_valid_tile_string += "\n";
             }
 
             match &self.hourakei {
-                Hourakei::Mentsute => hourakei_string = "面子手".to_string(),
-                Hourakei::Chiitoitsu => hourakei_string = "七对子".to_string(),
-                Hourakei::Kokushimusou => hourakei_string = "国士无双".to_string(),
+                Hourakei::Mentsute => hourakei_string = "和了形:面子手\n".to_string(),
+                Hourakei::Chiitoitsu => hourakei_string = "和了形:七对子\n".to_string(),
+                Hourakei::Kokushimusou => hourakei_string = "和了形:国士无双\n".to_string(),
             }
 
             write!(
                 f,
-                "听牌形:{}\n面子:{}\n对子:{}\n搭子:{}\n浮牌:{}",
-                hourakei_string, mentsu_string, toitsu_string, taatsu_string, ukihai_string
+                "{}{}{}{}{}{}",
+                hourakei_string,
+                mentsu_string,
+                toitsu_string,
+                taatsu_string,
+                chiitoutsu_kokushimusou_valid_tile_string,
+                ukihai_string
             )
         }
     }

@@ -1,5 +1,8 @@
 //! This mod defines all structures for an entire mahjong game.
 
+use std::collections::{HashMap, HashSet};
+use std::hash::Hash;
+
 /// Type of a tile.
 ///
 /// # Japanese
@@ -14,7 +17,7 @@
 /// * Pinzu: p
 /// * Souzu: s
 /// * Jihai: z
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Hai {
     Manzu(u8),
     Pinzu(u8),
@@ -34,7 +37,7 @@ pub enum Hai {
 /// * Juntsu: 2s 3s 4s
 /// * Koutsu: 1z 1z 1z
 /// * Kantsu: 6m 6m 6m 6m
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Mentsu {
     Juntsu(Hai, Hai, Hai),
     Koutsu(Hai),
@@ -50,21 +53,21 @@ pub enum Mentsu {
 /// * 1s 2s wait for 3s
 /// * 4p 6p wait for 5p
 /// * 7m 8m wait for 6m and 9m
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Taatsu(pub Hai, pub Hai);
 
 /// Two same tiles.
 ///
 /// # Japanese
 /// * Toitsu: 対子
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Toitsu(pub Hai);
 
 /// An isolated tile.
 ///
 /// # Japanese
 /// * Ukihai: 浮き牌
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Ukihai(pub Hai);
 
 /// Tiles on hand.
@@ -90,13 +93,24 @@ pub struct Tehai {
     pub fuuro: Vec<Mentsu>,
 }
 
+/// Tiles on wall.
+///
+/// # Japanese
+/// * Haiyama: 牌山
+/// * nokori: 残り
+/// * sutehai: 捨て牌
+pub struct Haiyama {
+    pub nokori: HashMap<Hai, u8>,
+    pub sutehai_type: HashSet<Hai>,
+}
+
 impl Hai {
     /// Get next tile.
-    /// 
+    ///
     /// # Parameters
-    /// * dora_loop: if dora_loop is false, next of 9m, 9p, 9s, 7z will be None. 
+    /// * dora_loop: if dora_loop is false, next of 9m, 9p, 9s, 7z will be None.
     /// Otherwise, next of 9m, 9p, 9s are 1m, 1p, 1s, next of 4z is 1z, next of 7z is 5z.
-    /// 
+    ///
     /// # Examples
     /// ```rust
     /// assert_eq!(Hai::Manzu(4).next(false), Some(Hai::Manzu(5)));
@@ -201,7 +215,65 @@ impl ToString for Ukihai {
 
 impl Tehai {
     pub fn new(menzen: Result<Vec<Hai>, String>, fuuro: Vec<Mentsu>) -> Self {
-        Tehai { menzen, fuuro }
+        let mut tehai = Tehai { menzen, fuuro };
+        tehai.check_hai_in_four();
+        tehai
+    }
+
+    pub fn check_hai_in_four(&mut self) -> &mut Self {
+        if let Ok(menzen_vec) = self.menzen.clone() {
+            let mut tehai_map: HashMap<Hai, u8> = HashMap::new();
+
+            let mut check_count = |menzen: &mut Result<_, _>, hai| -> bool {
+                if tehai_map.contains_key(hai) {
+                    let count = tehai_map[hai] + 1;
+                    if count > 4 {
+                        *menzen = Err(format!(
+                            "Invalid because of fifth tile {}.",
+                            hai.to_string()
+                        ));
+                        return false;
+                    }
+                    tehai_map.insert(*hai, count);
+                } else {
+                    tehai_map.insert(*hai, 1);
+                }
+                return true;
+            };
+
+            for item in menzen_vec.iter() {
+                if !check_count(&mut self.menzen, item) {
+                    return self;
+                }
+            }
+            for mentsu in self.fuuro.iter() {
+                match mentsu {
+                    Mentsu::Juntsu(a, b, c) => {
+                        if !check_count(&mut self.menzen, a)
+                            || !check_count(&mut self.menzen, b)
+                            || !check_count(&mut self.menzen, c)
+                        {
+                            return self;
+                        }
+                    }
+                    Mentsu::Koutsu(item) => {
+                        for _ in 0..3 {
+                            if !check_count(&mut self.menzen, item) {
+                                return self;
+                            }
+                        }
+                    }
+                    Mentsu::Kantsu(item) => {
+                        for _ in 0..4 {
+                            if !check_count(&mut self.menzen, item) {
+                                return self;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        self
     }
 }
 

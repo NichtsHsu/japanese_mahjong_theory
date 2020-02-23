@@ -1,6 +1,6 @@
 //! This mod include analyzers of tiles for their shanten number and waiting tiles.
 
-/// This mod analyze input string.
+/// This mod analyzes input string.
 pub mod input {
     use crate::mahjong::*;
 
@@ -123,6 +123,7 @@ pub mod input {
                     }
                     on_mentsu = false;
                 }
+                ' ' => (),
                 _ => {
                     return Tehai::new(
                         Err(format!("Unknown character '{}' at index {}.", ch, id)),
@@ -134,7 +135,7 @@ pub mod input {
 
         // Check if 3*k+2 tiles on menzen.
         if menzen.len() % 3 != 2 {
-            Tehai::new(Err(format!("The number of tiles on hand must be 2*k+2, such as 8, 11, 14, even 17, but {} provided.", menzen.len())), fuuro)
+            Tehai::new(Err(format!("The number of tiles on hand must be 3*k+2, such as 8, 11, 14, even 17, but {} provided.", menzen.len())), fuuro)
         } else {
             menzen.sort();
             Tehai::new(Ok(menzen), fuuro)
@@ -242,24 +243,38 @@ pub mod input {
     }
 }
 
-/// This mod calculate the shanten number of a hand of tiles.
+/// This mod calculates the shanten number of a hand of tiles.
+///
+/// # Japanese
+/// * shanten: 向聴
 pub mod shanten {
     use crate::mahjong::*;
+    use std::hash::Hash;
+    use std::collections::HashSet;
 
-    pub fn shanten_number(tehai: &Tehai) -> Result<(i32, Vec<Decomposer>), String> {
+    /// The main interface of this mod for calculating the shanten number.
+    ///
+    /// # Parameters
+    /// * teihai: tiles you had.
+    ///
+    /// # Return
+    /// * The `i32` data is the minimum shanten number of input tiles.
+    /// * The `HashSet<Decomposer>` data is all decomposers that thier shanten numbers are minimum one.
+    /// * The `String` data is error message.
+    pub fn calculate(tehai: &Tehai) -> Result<(i32, HashSet<Decomposer>), String> {
         use Hai::*;
 
         let menzen_vec = tehai.menzen.as_ref()?;
         let mut min_shanten_number = ((menzen_vec.len() / 3) * 2) as i32;
-        let mut min_shanten_decomposers = vec![];
+        let mut min_shanten_decomposers = HashSet::new();
 
         let mut push_into_decomposers = |decomposer: Decomposer| {
             if decomposer.shanten_number(menzen_vec.len()) == min_shanten_number {
-                min_shanten_decomposers.push(decomposer);
+                min_shanten_decomposers.insert(decomposer);
             } else if decomposer.shanten_number(menzen_vec.len()) < min_shanten_number {
                 min_shanten_number = decomposer.shanten_number(menzen_vec.len());
                 min_shanten_decomposers.clear();
-                min_shanten_decomposers.push(decomposer);
+                min_shanten_decomposers.insert(decomposer);
             }
         };
 
@@ -274,7 +289,7 @@ pub mod shanten {
         }
 
         // Analyze Chiitoitsu
-        if menzen_vec.len() % 6 == 2 {
+        if menzen_vec.len() == 14 && tehai.fuuro.len() == 0 {
             let mut decomposer = Decomposer::new();
             decomposer.hourakei = Hourakei::Chiitoitsu;
 
@@ -311,7 +326,7 @@ pub mod shanten {
         }
 
         // Analyze Kokushimusou
-        if menzen_vec.len() == 14 {
+        if menzen_vec.len() == 14 && tehai.fuuro.len() == 0 {
             const YAOCHUUPAI: [Hai; 13] = [
                 Manzu(1),
                 Manzu(9),
@@ -369,16 +384,14 @@ pub mod shanten {
     /// Type of tiles when winning.
     ///
     /// # Note
-    /// * Only 14 tiles can be Kokushimusou.
-    /// * Only 6*k+2 tiles can be Chiitoitsu. 8 tiles -> four pairs,
-    /// 14 tiles -> seven pairs, 20 tiles -> ten pairs ...
+    /// * Only 14 tiles can be Kokushimusou and Chiitoitsu.
     ///
     /// # Japanese
     /// * Hourakei: 和了形
     /// * Mentsute: 面子手
     /// * Chiitoitsu: 七対子
     /// * Kokushimusou: 国士無双
-    #[derive(Copy, Clone, Debug)]
+    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
     pub enum Hourakei {
         Mentsute,
         Chiitoitsu,
@@ -390,7 +403,7 @@ pub mod shanten {
     /// # Note
     /// When hourakei is Kokushimusou, ukihai_vec only record 1m9m1p9p1s9s1z2z3z4z5z6z7z
     /// and at most a pair of same tiles.
-    #[derive(Clone, Debug)]
+    #[derive(Clone, Debug, Hash, PartialEq, Eq)]
     pub struct Decomposer {
         mentsu_vec: Vec<Mentsu>,
         toitsu_vec: Vec<Toitsu>,
@@ -465,23 +478,31 @@ pub mod shanten {
         pub fn shanten_number(&self, hai_number: usize) -> i32 {
             match self.hourakei {
                 Hourakei::Mentsute => {
+                    let mut toitsu_set = HashSet::new();
+                    for toitsu in self.toitsu_vec.iter() {
+                        toitsu_set.insert(toitsu);
+                    }
+                    if toitsu_set.len() != self.toitsu_vec.len() {
+                        return 13;
+                    }
+
                     let max_mentsu_toitsu_taatsu = (hai_number + 1) / 3;
                     let toitsu_num = std::cmp::min(
-                        max_mentsu_toitsu_taatsu - self.mentsu_vec().len(),
+                        max_mentsu_toitsu_taatsu - self.mentsu_vec.len(),
                         self.toitsu_vec.len(),
                     );
                     let taatsu_num = std::cmp::min(
-                        max_mentsu_toitsu_taatsu - self.mentsu_vec().len() - toitsu_num,
+                        max_mentsu_toitsu_taatsu - self.mentsu_vec.len() - toitsu_num,
                         self.taatsu_vec().len(),
                     );
+
                     return ((hai_number / 3) * 2) as i32
                         - 2 * self.mentsu_vec.len() as i32
                         - toitsu_num as i32
                         - taatsu_num as i32;
                 }
                 Hourakei::Chiitoitsu => {
-                    return hai_number as i32
-                        - 1
+                    return 13
                         - 2 * self.toitsu_vec.len() as i32
                         - std::cmp::min(
                             self.chiitoutsu_kokushimusou_valid_tile_vec.len(),
@@ -765,3 +786,59 @@ pub mod shanten {
         )
     }
 }
+
+/// This mod analyzes what and how many tiles you are waiting for.
+///
+/// # Japanese
+/// * machi: 待ち
+// pub mod machi {
+//     use super::shanten;
+//     use crate::mahjong::*;
+//     use std::collections::HashMap;
+
+//     pub fn analyze(tehai: &Tehai, yama: Option<&Haiyama>) -> Result<(i32, Vec<Condition>), String> {
+//         let (shanten_number, decomposers_set) = shanten::calculate(tehai)?;
+//         let mut conditions_vec = vec![];
+//         if decomposers_set.len() == 0 {
+//             return Err("Unhandled error: No decomposer found.".to_string());
+//         }
+//         if shanten_number == -1 {
+//             return Ok((shanten_number, conditions_vec));
+//         }
+
+//         Ok((shanten_number, conditions_vec))
+//     }
+
+//     pub struct Condition {
+//         pub sutehai: Hai,
+//         pub machihai: HashMap<Hai, u8>,
+//         pub furiten: bool,
+//     }
+
+//     impl Condition {
+//         fn new(sutehai: Hai) -> Condition {
+//             Condition {
+//                 sutehai,
+//                 machihai: HashMap::new(),
+//                 furiten: false,
+//             }
+//         }
+
+//         fn finally_handle(&mut self, tehai: &Tehai, yama: Option<&Haiyama>) -> Result<&mut Self, String> {
+//             if let Some(yama) = yama {}
+
+//             let menzen_vec = tehai.menzen.as_ref()?;
+//             for item in menzen_vec.iter() {
+//                 if self.machihai.contains_key(item) {
+//                     if self.machihai[item] > 0 {
+//                         self.machihai.insert(*item, self.machihai[item] - 1);
+//                     } else {
+//                         return Err("Unhandled error: Number of a kind of tile more than 4.".to_string());
+//                     }
+//                 }
+//             }
+
+//             Ok(self)
+//         }
+//     }
+// }

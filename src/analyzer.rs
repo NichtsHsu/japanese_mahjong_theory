@@ -7,11 +7,12 @@ pub mod input {
     /// Parse a string to instance of Tehai.
     ///
     /// # Input
-    /// You can input tiles out of order, and use [] represent formed melds
+    /// You can input tiles out of order, and use [] represent formed melds. All spaces will be ignored.
     /// (they will not be considered for shanten number).
     /// * stanard: `1m2m3m4m4m5m4p4p4p5p8s[1z1z1z]`
     /// * shorter: `123445m4445p8s[111z]`
-    /// * out of order: `45p8s144m[111z]25m44p3m`
+    /// * with spaces: `123445m 4445p 8s [111z]`
+    /// * chaos: `45p 8s14 4m[11 1z]2 5m44p 3m`
     ///
     /// Note that only 3*k+2 tiles out of '[]'(2, 5, 8, 11, 14, 17, 20...) can be parse.
     ///
@@ -249,8 +250,8 @@ pub mod input {
 /// * shanten: 向聴
 pub mod shanten {
     use crate::mahjong::*;
-    use std::hash::Hash;
     use std::collections::HashSet;
+    use std::hash::Hash;
 
     /// The main interface of this mod for calculating the shanten number.
     ///
@@ -487,13 +488,13 @@ pub mod shanten {
                     }
 
                     let max_mentsu_toitsu_taatsu = (hai_number + 1) / 3;
-                    let toitsu_num = std::cmp::min(
-                        max_mentsu_toitsu_taatsu - self.mentsu_vec.len(),
-                        self.toitsu_vec.len(),
-                    );
                     let taatsu_num = std::cmp::min(
-                        max_mentsu_toitsu_taatsu - self.mentsu_vec.len() - toitsu_num,
+                        max_mentsu_toitsu_taatsu - 1 - self.mentsu_vec.len(),
                         self.taatsu_vec().len(),
+                    );
+                    let toitsu_num = std::cmp::min(
+                        max_mentsu_toitsu_taatsu - self.mentsu_vec.len() - taatsu_num,
+                        self.toitsu_vec.len(),
                     );
 
                     return ((hai_number / 3) * 2) as i32
@@ -741,6 +742,8 @@ pub mod shanten {
             _ => {
                 let current_plus_one = current.next(false);
                 if let Some(current_plus_one) = current_plus_one {
+                    let current_plus_two = current_plus_one.next(false);
+
                     let filtered: Vec<&Hai> = menzen_vec
                         .iter()
                         .filter(|&x| x == &current_plus_one)
@@ -754,7 +757,6 @@ pub mod shanten {
                             current_plus_one,
                             depth + 1,
                         )?;
-                        let current_plus_two = current_plus_one.next(false);
                         if let Some(current_plus_two) = current_plus_two {
                             let filtered: Vec<&Hai> = menzen_vec
                                 .iter()
@@ -767,6 +769,23 @@ pub mod shanten {
                                     &mut decomposer.clone(),
                                     current,
                                     current_plus_one,
+                                    current_plus_two,
+                                    depth + 1,
+                                )?;
+                            }
+                        }
+                    } else {
+                        if let Some(current_plus_two) = current_plus_two {
+                            let filtered: Vec<&Hai> = menzen_vec
+                                .iter()
+                                .filter(|&x| x == &current_plus_two)
+                                .collect();
+                            if filtered.len() > 0 {
+                                handle_taatsu(
+                                    tehai,
+                                    decomposers_vec,
+                                    &mut decomposer.clone(),
+                                    current,
                                     current_plus_two,
                                     depth + 1,
                                 )?;
@@ -791,54 +810,60 @@ pub mod shanten {
 ///
 /// # Japanese
 /// * machi: 待ち
-// pub mod machi {
-//     use super::shanten;
-//     use crate::mahjong::*;
-//     use std::collections::HashMap;
+pub mod machi {
+    use super::shanten;
+    use crate::mahjong::*;
+    use std::collections::HashMap;
 
-//     pub fn analyze(tehai: &Tehai, yama: Option<&Haiyama>) -> Result<(i32, Vec<Condition>), String> {
-//         let (shanten_number, decomposers_set) = shanten::calculate(tehai)?;
-//         let mut conditions_vec = vec![];
-//         if decomposers_set.len() == 0 {
-//             return Err("Unhandled error: No decomposer found.".to_string());
-//         }
-//         if shanten_number == -1 {
-//             return Ok((shanten_number, conditions_vec));
-//         }
+    pub fn analyze(tehai: &Tehai, yama: Option<&Haiyama>) -> Result<(i32, Vec<Condition>), String> {
+        let (shanten_number, decomposers_set) = shanten::calculate(tehai)?;
+        let mut conditions_vec = vec![];
+        if decomposers_set.len() == 0 {
+            return Err("Unhandled error: No decomposer found.".to_string());
+        }
+        if shanten_number == -1 {
+            return Ok((shanten_number, conditions_vec));
+        }
 
-//         Ok((shanten_number, conditions_vec))
-//     }
+        Ok((shanten_number, conditions_vec))
+    }
 
-//     pub struct Condition {
-//         pub sutehai: Hai,
-//         pub machihai: HashMap<Hai, u8>,
-//         pub furiten: bool,
-//     }
+    pub struct Condition {
+        pub sutehai: Hai,
+        pub machihai: HashMap<Hai, u8>,
+        pub furiten: bool,
+    }
 
-//     impl Condition {
-//         fn new(sutehai: Hai) -> Condition {
-//             Condition {
-//                 sutehai,
-//                 machihai: HashMap::new(),
-//                 furiten: false,
-//             }
-//         }
+    impl Condition {
+        fn new(sutehai: Hai) -> Condition {
+            Condition {
+                sutehai,
+                machihai: HashMap::new(),
+                furiten: false,
+            }
+        }
 
-//         fn finally_handle(&mut self, tehai: &Tehai, yama: Option<&Haiyama>) -> Result<&mut Self, String> {
-//             if let Some(yama) = yama {}
+        fn finally_handle(
+            &mut self,
+            tehai: &Tehai,
+            yama: Option<&Haiyama>,
+        ) -> Result<&mut Self, String> {
+            if let Some(yama) = yama {}
 
-//             let menzen_vec = tehai.menzen.as_ref()?;
-//             for item in menzen_vec.iter() {
-//                 if self.machihai.contains_key(item) {
-//                     if self.machihai[item] > 0 {
-//                         self.machihai.insert(*item, self.machihai[item] - 1);
-//                     } else {
-//                         return Err("Unhandled error: Number of a kind of tile more than 4.".to_string());
-//                     }
-//                 }
-//             }
+            let menzen_vec = tehai.menzen.as_ref()?;
+            for item in menzen_vec.iter() {
+                if self.machihai.contains_key(item) {
+                    if self.machihai[item] > 0 {
+                        self.machihai.insert(*item, self.machihai[item] - 1);
+                    } else {
+                        return Err(
+                            "Unhandled error: Number of a kind of tile more than 4.".to_string()
+                        );
+                    }
+                }
+            }
 
-//             Ok(self)
-//         }
-//     }
-// }
+            Ok(self)
+        }
+    }
+}

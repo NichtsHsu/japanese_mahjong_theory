@@ -70,6 +70,26 @@ pub struct Toitsu(pub Hai);
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Ukihai(pub Hai);
 
+/// Array of 1m 9m 1p 9p 1s 9s 1z 2z 3z 4z 5z 6z 7z.
+/// 
+/// # Japanese
+/// * yaochuupai: 么九牌 
+pub const YAOCHUUPAI: [Hai; 13] = [
+    Hai::Manzu(1),
+    Hai::Manzu(9),
+    Hai::Pinzu(1),
+    Hai::Pinzu(9),
+    Hai::Souzu(1),
+    Hai::Souzu(9),
+    Hai::Jihai(1),
+    Hai::Jihai(2),
+    Hai::Jihai(3),
+    Hai::Jihai(4),
+    Hai::Jihai(5),
+    Hai::Jihai(6),
+    Hai::Jihai(7),
+];
+
 /// Tiles on hand.
 ///
 /// # Japanese

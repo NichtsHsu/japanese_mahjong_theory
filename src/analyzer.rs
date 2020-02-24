@@ -328,22 +328,6 @@ pub mod shanten {
 
         // Analyze Kokushimusou
         if menzen_vec.len() == 14 && tehai.fuuro.len() == 0 {
-            const YAOCHUUPAI: [Hai; 13] = [
-                Manzu(1),
-                Manzu(9),
-                Pinzu(1),
-                Pinzu(9),
-                Souzu(1),
-                Souzu(9),
-                Jihai(1),
-                Jihai(2),
-                Jihai(3),
-                Jihai(4),
-                Jihai(5),
-                Jihai(6),
-                Jihai(7),
-            ];
-
             let mut decomposer = Decomposer::new();
             let mut toitsu_included = false;
             let mut yaochuupai_iter_changed = true;
@@ -470,6 +454,10 @@ pub mod shanten {
 
         pub fn ukihai_vec(&self) -> &Vec<Ukihai> {
             &self.ukihai_vec
+        }
+
+        pub fn chiitoutsu_kokushimusou_valid_tile_vec(&self) -> &Vec<Hai> {
+            &self.chiitoutsu_kokushimusou_valid_tile_vec
         }
 
         pub fn hourakei(&self) -> Hourakei {
@@ -811,9 +799,9 @@ pub mod shanten {
 /// # Japanese
 /// * machi: 待ち
 pub mod machi {
-    use super::shanten;
+    use super::shanten::{self, Decomposer, Hourakei};
     use crate::mahjong::*;
-    use std::collections::HashMap;
+    use std::collections::{BTreeMap, HashMap, HashSet};
 
     pub fn analyze(tehai: &Tehai, yama: Option<&Haiyama>) -> Result<(i32, Vec<Condition>), String> {
         let (shanten_number, decomposers_set) = shanten::calculate(tehai)?;
@@ -824,22 +812,116 @@ pub mod machi {
         if shanten_number == -1 {
             return Ok((shanten_number, conditions_vec));
         }
+        if shanten_number >= 0 {
+            let mut sutehai_set = HashSet::new();
+            for decomposer in decomposers_set.iter() {
+                for ukihai in decomposer.ukihai_vec().iter() {
+                    sutehai_set.insert(ukihai.0);
+                }
+            }
+            for sutehai in sutehai_set {
+                let mut condition = Condition::new(sutehai, shanten_number);
+                for decomposer in decomposers_set.iter() {
+                    condition.handle(decomposer)?;
+                }
+                condition.finally_handle(tehai, yama)?;
+                conditions_vec.push(condition);
+            }
+        }
 
         Ok((shanten_number, conditions_vec))
     }
 
     pub struct Condition {
         pub sutehai: Hai,
-        pub machihai: HashMap<Hai, u8>,
+        pub machihai: BTreeMap<Hai, u8>,
         pub furiten: bool,
+        shanten_number: i32,
     }
 
     impl Condition {
-        fn new(sutehai: Hai) -> Condition {
+        fn new(sutehai: Hai, shanten_number: i32) -> Condition {
             Condition {
                 sutehai,
-                machihai: HashMap::new(),
+                machihai: BTreeMap::new(),
                 furiten: false,
+                shanten_number,
+            }
+        }
+
+        fn handle(&mut self, decomposer: &Decomposer) -> Result<&mut Self, String> {
+            let handle_kokushimushou = |machihai: &mut BTreeMap<_, _>, decomposer: &Decomposer| {
+                let mut yaochuupai_iter = YAOCHUUPAI.iter();
+                let mut kokushimusou_valid_iter =
+                    decomposer.chiitoutsu_kokushimusou_valid_tile_vec().iter();
+
+                let mut yaochuupai_pair = false;
+
+                // Check for yaochuupai pair
+                {
+                    let mut iter = decomposer.chiitoutsu_kokushimusou_valid_tile_vec().iter();
+                    let first = iter.next();
+                    if let Some(mut last) = first {
+                        for hai in iter {
+                            if hai == last {
+                                yaochuupai_pair = true;
+                                break;
+                            } else {
+                                last = hai;
+                            }
+                        }
+                    }
+                    if !yaochuupai_pair {
+                        for yaochuupai in yaochuupai_iter {
+                            machihai.insert(*yaochuupai, 4);
+                        }
+                        return;
+                    }
+                }
+                let mut yaochuupai_value = yaochuupai_iter.next();
+                let mut kokushimusou_valid_value = kokushimusou_valid_iter.next();
+                let mut yaochuupai_used = false;
+
+                while yaochuupai_value != None && kokushimusou_valid_value != None {
+                    if let (Some(lhs), Some(rhs)) = (yaochuupai_value, kokushimusou_valid_value) {
+                        //println!("{},{}", lhs.to_string(), rhs.to_string());
+                        if lhs < rhs {
+                            if !yaochuupai_used {
+                                machihai.insert(*lhs, 4);
+                            }
+                            yaochuupai_used = false;
+                            yaochuupai_value = yaochuupai_iter.next();
+                        } else if lhs > rhs {
+                            kokushimusou_valid_value = kokushimusou_valid_iter.next();
+                        } else if lhs == rhs {
+                            yaochuupai_used = true;
+                            kokushimusou_valid_value = kokushimusou_valid_iter.next();
+                        }
+                    }
+                }
+                if !yaochuupai_pair {
+                    if let Some(yaochuupai) = yaochuupai_value {
+                        machihai.insert(*yaochuupai, 4);
+                    }
+                }
+                for rest in yaochuupai_iter {
+                    machihai.insert(*rest, 4);
+                }
+            };
+
+            match self.shanten_number {
+                n @ std::i32::MIN..=-2 => Err(format!("Unhandled error: shanten number is {}.", n)),
+                -1 => Ok(self),
+                _ => {
+                    match decomposer.hourakei() {
+                        Hourakei::Mentsute => {}
+                        Hourakei::Chiitoitsu => {}
+                        Hourakei::Kokushimusou => {
+                            handle_kokushimushou(&mut self.machihai, decomposer)
+                        }
+                    }
+                    Ok(self)
+                }
             }
         }
 
@@ -848,22 +930,89 @@ pub mod machi {
             tehai: &Tehai,
             yama: Option<&Haiyama>,
         ) -> Result<&mut Self, String> {
+            let mut check_count = |machihai: &mut BTreeMap<_, _>, item| -> bool {
+                if machihai.contains_key(item) {
+                    if machihai[item] > 0 {
+                        machihai.insert(*item, machihai[item] - 1);
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    true
+                }
+            };
+
             if let Some(yama) = yama {}
 
             let menzen_vec = tehai.menzen.as_ref()?;
             for item in menzen_vec.iter() {
-                if self.machihai.contains_key(item) {
-                    if self.machihai[item] > 0 {
-                        self.machihai.insert(*item, self.machihai[item] - 1);
-                    } else {
-                        return Err(
-                            "Unhandled error: Number of a kind of tile more than 4.".to_string()
-                        );
+                if !check_count(&mut self.machihai, item) {
+                    return Err(
+                        "Unhandled error: Number of a kind of tile more than 4.".to_string()
+                    );
+                }
+            }
+
+            for mentsu in tehai.fuuro.iter() {
+                match mentsu {
+                    Mentsu::Juntsu(a, b, c) => {
+                        if !check_count(&mut self.machihai, a)
+                            || !check_count(&mut self.machihai, b)
+                            || !check_count(&mut self.machihai, c)
+                        {
+                            return Err("Unhandled error: Number of a kind of tile more than 4."
+                                .to_string());
+                        }
+                    }
+                    Mentsu::Koutsu(item) => {
+                        for _ in 0..3 {
+                            if !check_count(&mut self.machihai, item) {
+                                return Err(
+                                    "Unhandled error: Number of a kind of tile more than 4."
+                                        .to_string(),
+                                );
+                            }
+                        }
+                    }
+                    Mentsu::Kantsu(item) => {
+                        for _ in 0..4 {
+                            if !check_count(&mut self.machihai, item) {
+                                return Err(
+                                    "Unhandled error: Number of a kind of tile more than 4."
+                                        .to_string(),
+                                );
+                            }
+                        }
                     }
                 }
             }
 
             Ok(self)
+        }
+    }
+
+    impl std::fmt::Display for Condition {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let mut machihai_string = String::new();
+            let mut furiten_string = String::new();
+            let mut nokori = 0;
+            for (machihai, number) in self.machihai.iter() {
+                machihai_string += &machihai.to_string();
+                machihai_string += " ";
+                nokori += number;
+            }
+            if self.furiten {
+                furiten_string = "!振り聴!".to_string();
+            }
+            write!(
+                f,
+                "打 {} 摸 {} 残り{}枚{}",
+                self.sutehai.to_string(),
+                machihai_string,
+                nokori,
+                furiten_string
+            )
         }
     }
 }

@@ -971,8 +971,10 @@ pub mod machi {
                                 for ukihai in decomposer.ukihai_vec().iter() {
                                     if ukihai.0 != self.sutehai {
                                         self.machihai.insert(ukihai.0, 4);
-                                        return Ok(self);
                                     }
+                                }
+                                if decomposer.taatsu_vec().len() == 0 {
+                                    return Ok(self);
                                 }
                             }
 
@@ -1053,19 +1055,24 @@ pub mod machi {
                                 for ukihai in decomposer.ukihai_vec().iter() {
                                     if ukihai.0 != self.sutehai {
                                         self.machihai.insert(ukihai.0, 4);
-                                        match ukihai.0 {
-                                            Hai::Jihai(_) => (),
-                                            _ => {
-                                                if let Some(machi) = ukihai.0.before(false) {
-                                                    self.machihai.insert(machi, 4);
-                                                    if let Some(machi_2) = machi.before(false) {
-                                                        self.machihai.insert(machi_2, 4);
+                                        if decomposer.mentsu_vec().len()
+                                            + decomposer.taatsu_vec().len()
+                                            < max_mentsu_toitsu_taatsu - 1
+                                        {
+                                            match ukihai.0 {
+                                                Hai::Jihai(_) => (),
+                                                _ => {
+                                                    if let Some(machi) = ukihai.0.before(false) {
+                                                        self.machihai.insert(machi, 4);
+                                                        if let Some(machi_2) = machi.before(false) {
+                                                            self.machihai.insert(machi_2, 4);
+                                                        }
                                                     }
-                                                }
-                                                if let Some(machi) = ukihai.0.next(false) {
-                                                    self.machihai.insert(machi, 4);
-                                                    if let Some(machi_2) = machi.next(false) {
-                                                        self.machihai.insert(machi_2, 4);
+                                                    if let Some(machi) = ukihai.0.next(false) {
+                                                        self.machihai.insert(machi, 4);
+                                                        if let Some(machi_2) = machi.next(false) {
+                                                            self.machihai.insert(machi_2, 4);
+                                                        }
                                                     }
                                                 }
                                             }

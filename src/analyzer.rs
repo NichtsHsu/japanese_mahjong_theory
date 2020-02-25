@@ -129,7 +129,7 @@ pub mod input {
                     return Tehai::new(
                         Err(format!("Unknown character '{}' at index {}.", ch, id)),
                         fuuro,
-                    )
+                    );
                 }
             }
         }
@@ -263,8 +263,6 @@ pub mod shanten {
     /// * The `HashSet<Decomposer>` data is all decomposers that thier shanten numbers are minimum one.
     /// * The `String` data is error message.
     pub fn calculate(tehai: &Tehai) -> Result<(i32, HashSet<Decomposer>), String> {
-        use Hai::*;
-
         let menzen_vec = tehai.menzen.as_ref()?;
         let mut min_shanten_number = ((menzen_vec.len() / 3) * 2) as i32;
         let mut min_shanten_decomposers = HashSet::new();
@@ -801,8 +799,23 @@ pub mod shanten {
 pub mod machi {
     use super::shanten::{self, Decomposer, Hourakei};
     use crate::mahjong::*;
-    use std::collections::{BTreeMap, HashMap, HashSet};
+    use std::collections::{BTreeMap, HashSet};
 
+    /// Main funtion of this mod.
+    /// 
+    /// # Japanese
+    /// * tehai: 手牌
+    /// * yama: 山
+    /// * Haiyama: 牌山
+    /// 
+    /// # Parameter
+    /// * tehai: input tiles.
+    /// * yama: optional, all retained tiles on game.
+    /// 
+    /// # Return
+    /// * i32: the number of shanten.
+    /// * Vec<Condition>: all conditions of different sutehais.
+    /// * String: error message.
     pub fn analyze(tehai: &Tehai, yama: Option<&Haiyama>) -> Result<(i32, Vec<Condition>), String> {
         let (shanten_number, decomposers_set) = shanten::calculate(tehai)?;
         let mut conditions_vec = vec![];
@@ -829,9 +842,47 @@ pub mod machi {
             }
         }
 
+        conditions_vec.retain(|cond| cond.nokori() > 0);
+        conditions_vec.sort_by(|lhs, rhs| {
+            if lhs.nokori().cmp(&rhs.nokori()) == std::cmp::Ordering::Equal {
+                lhs.sutehai.cmp(&rhs.sutehai)
+            } else {
+                lhs.nokori().cmp(&rhs.nokori()).reverse()
+            }
+        });
+
         Ok((shanten_number, conditions_vec))
     }
 
+    /// A shell of `analyze`, print the result.
+    pub fn analyze_and_print(
+        tehai: &Tehai,
+        yama: Option<&Haiyama>,
+    ) -> Result<(i32, Vec<Condition>), String> {
+        let (shanten, conditions) = analyze(tehai, yama)?;
+        println!("--------");
+        println!("手牌：{}", tehai);
+        println!("向听：{}", shanten);
+        println!("--------");
+        for i in conditions.iter() {
+            println!("{}", i);
+        }
+        println!("--------");
+        Ok((shanten, conditions))
+    }
+
+    /// Condition of different sutehais.
+    /// 
+    /// # Japanese
+    /// * sutehai: 捨て牌
+    /// * machihai: 待ち牌
+    /// * furiten: 振り聴
+    /// * shanten: 向聴
+    /// 
+    /// # Member
+    /// * sutehai: which ukihai will be discarded.
+    /// * machihai: tiles waiting for.
+    /// * furiten: if machihai included prevenient sutehai.
     pub struct Condition {
         pub sutehai: Hai,
         pub machihai: BTreeMap<Hai, u8>,
@@ -849,75 +900,232 @@ pub mod machi {
             }
         }
 
+        /// Input a decomposer and analyze what tiles it is waiting for.
+        /// The number of hai always set to 4 when inserting tiles into self.machihai.
+        /// Therefore, calling `finally_handle` after calling all `handle`s is necessary.
         fn handle(&mut self, decomposer: &Decomposer) -> Result<&mut Self, String> {
-            let handle_kokushimushou = |machihai: &mut BTreeMap<_, _>, decomposer: &Decomposer| {
-                let mut yaochuupai_iter = YAOCHUUPAI.iter();
-                let mut kokushimusou_valid_iter =
-                    decomposer.chiitoutsu_kokushimusou_valid_tile_vec().iter();
-
-                let mut yaochuupai_pair = false;
-
-                // Check for yaochuupai pair
-                {
-                    let mut iter = decomposer.chiitoutsu_kokushimusou_valid_tile_vec().iter();
-                    let first = iter.next();
-                    if let Some(mut last) = first {
-                        for hai in iter {
-                            if hai == last {
-                                yaochuupai_pair = true;
-                                break;
-                            } else {
-                                last = hai;
-                            }
-                        }
-                    }
-                    if !yaochuupai_pair {
-                        for yaochuupai in yaochuupai_iter {
-                            machihai.insert(*yaochuupai, 4);
-                        }
-                        return;
-                    }
-                }
-                let mut yaochuupai_value = yaochuupai_iter.next();
-                let mut kokushimusou_valid_value = kokushimusou_valid_iter.next();
-                let mut yaochuupai_used = false;
-
-                while yaochuupai_value != None && kokushimusou_valid_value != None {
-                    if let (Some(lhs), Some(rhs)) = (yaochuupai_value, kokushimusou_valid_value) {
-                        //println!("{},{}", lhs.to_string(), rhs.to_string());
-                        if lhs < rhs {
-                            if !yaochuupai_used {
-                                machihai.insert(*lhs, 4);
-                            }
-                            yaochuupai_used = false;
-                            yaochuupai_value = yaochuupai_iter.next();
-                        } else if lhs > rhs {
-                            kokushimusou_valid_value = kokushimusou_valid_iter.next();
-                        } else if lhs == rhs {
-                            yaochuupai_used = true;
-                            kokushimusou_valid_value = kokushimusou_valid_iter.next();
-                        }
-                    }
-                }
-                if !yaochuupai_pair {
-                    if let Some(yaochuupai) = yaochuupai_value {
-                        machihai.insert(*yaochuupai, 4);
-                    }
-                }
-                for rest in yaochuupai_iter {
-                    machihai.insert(*rest, 4);
-                }
-            };
-
             match self.shanten_number {
                 n @ std::i32::MIN..=-2 => Err(format!("Unhandled error: shanten number is {}.", n)),
                 -1 => Ok(self),
                 _ => {
+                    // If sutehai is not in decomposer's ukihai vector, no need to analyze.
+                    if !decomposer
+                        .ukihai_vec()
+                        .contains(&Ukihai { 0: self.sutehai })
+                    {
+                        return Ok(self);
+                    }
                     match decomposer.hourakei() {
-                        Hourakei::Mentsute => {}
-                        Hourakei::Chiitoitsu => {}
+                        Hourakei::Mentsute => {
+                            // If taatsu overload, no need to analyze.
+                            if decomposer.mentsu_vec().len() + decomposer.taatsu_vec().len() > 4 {
+                                return Ok(self);
+                            }
+                            // If toitsu overload, no need to analyze.
+                            if decomposer.mentsu_vec().len()
+                                + decomposer.taatsu_vec().len()
+                                + decomposer.toitsu_vec().len()
+                                > 5
+                            {
+                                return Ok(self);
+                            }
+
+                            // Analyze 4 mentsu and 2 ukihai condition
+                            {
+                                if decomposer.mentsu_vec().len() == 4
+                                    && decomposer.ukihai_vec().len() == 2
+                                {
+                                    for ukihai in decomposer.ukihai_vec().iter() {
+                                        if ukihai.0 != self.sutehai {
+                                            self.machihai.insert(ukihai.0, 4);
+                                            return Ok(self);
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Analyze taatsu.
+                            for taatsu in decomposer.taatsu_vec().iter() {
+                                match (taatsu.0, taatsu.1) {
+                                    (Hai::Manzu(lhs), Hai::Manzu(rhs)) => {
+                                        if rhs - lhs == 2 {
+                                            if let Some(machi) = taatsu.0.next(false) {
+                                                self.machihai.insert(machi, 4);
+                                            } else {
+                                                return Err(format!("Unhandled error: Get 'None' between {} and {}.",
+                                                                           taatsu.0.to_string(),
+                                                                           taatsu.1.to_string()));
+                                            }
+                                        } else if rhs - lhs == 1 {
+                                            if let Some(machi) = taatsu.0.before(false) {
+                                                self.machihai.insert(machi, 4);
+                                            }
+                                            if let Some(machi) = taatsu.1.next(false) {
+                                                self.machihai.insert(machi, 4);
+                                            }
+                                        }
+                                    }
+                                    (Hai::Pinzu(lhs), Hai::Pinzu(rhs)) => {
+                                        if rhs - lhs == 2 {
+                                            if let Some(machi) = taatsu.0.next(false) {
+                                                self.machihai.insert(machi, 4);
+                                            } else {
+                                                return Err(format!("Unhandled error: Get 'None' between {} and {}.",
+                                                                           taatsu.0.to_string(),
+                                                                           taatsu.1.to_string()));
+                                            }
+                                        } else if rhs - lhs == 1 {
+                                            if let Some(machi) = taatsu.0.before(false) {
+                                                self.machihai.insert(machi, 4);
+                                            }
+                                            if let Some(machi) = taatsu.1.next(false) {
+                                                self.machihai.insert(machi, 4);
+                                            }
+                                        }
+                                    }
+                                    (Hai::Souzu(lhs), Hai::Souzu(rhs)) => {
+                                        if rhs - lhs == 2 {
+                                            if let Some(machi) = taatsu.0.next(false) {
+                                                self.machihai.insert(machi, 4);
+                                            } else {
+                                                return Err(format!("Unhandled error: Get 'None' between {} and {}.",
+                                                                           taatsu.0.to_string(),
+                                                                           taatsu.1.to_string()));
+                                            }
+                                        } else if rhs - lhs == 1 {
+                                            if let Some(machi) = taatsu.0.before(false) {
+                                                self.machihai.insert(machi, 4);
+                                            }
+                                            if let Some(machi) = taatsu.1.next(false) {
+                                                self.machihai.insert(machi, 4);
+                                            }
+                                        }
+                                    }
+                                    _ => (),
+                                }
+
+                                // If more than 1 toitsu, analyze toitsu.
+                                if decomposer.toitsu_vec().len() > 1 {
+                                    for toitsu in decomposer.toitsu_vec().iter() {
+                                        self.machihai.insert(toitsu.0, 4);
+                                    }
+                                }
+
+                                // If taatsu and toitsu not enough.
+                                if decomposer.mentsu_vec().len()
+                                    + decomposer.taatsu_vec().len()
+                                    + decomposer.toitsu_vec().len()
+                                    < 5
+                                {
+                                    for ukihai in decomposer.ukihai_vec().iter() {
+                                        if ukihai.0 != self.sutehai {
+                                            self.machihai.insert(ukihai.0, 4);
+                                            if let Some(machi) = ukihai.0.before(false) {
+                                                self.machihai.insert(machi, 4);
+                                                if let Some(machi_2) = machi.before(false) {
+                                                    self.machihai.insert(machi_2, 4);
+                                                }
+                                            }
+                                            if let Some(machi) = ukihai.0.next(false) {
+                                                self.machihai.insert(machi, 4);
+                                                if let Some(machi_2) = machi.next(false) {
+                                                    self.machihai.insert(machi_2, 4);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Hourakei::Chiitoitsu => {
+                            // Enough single tiles.
+                            if decomposer.toitsu_vec().len()
+                                + decomposer.chiitoutsu_kokushimusou_valid_tile_vec().len()
+                                >= 7
+                            {
+                                for hai in
+                                    decomposer.chiitoutsu_kokushimusou_valid_tile_vec().iter()
+                                {
+                                    self.machihai.insert(*hai, 4);
+                                }
+                            }
+                            // Need more single tiles for shanten.
+                            else {
+                                let mut all_hai = Hai::gen_all_type();
+
+                                // Not wait tiles that already been pairs.
+                                for toitsu in decomposer.toitsu_vec().iter() {
+                                    all_hai.remove(&toitsu.0);
+                                }
+
+                                // The rest is wanted tiles.
+                                for hai in all_hai {
+                                    self.machihai.insert(hai, 4);
+                                }
+                            }
+                        }
                         Hourakei::Kokushimusou => {
-                            handle_kokushimushou(&mut self.machihai, decomposer)
+                            let mut yaochuupai_iter = YAOCHUUPAI.iter();
+                            let mut kokushimusou_valid_iter =
+                                decomposer.chiitoutsu_kokushimusou_valid_tile_vec().iter();
+
+                            let mut yaochuupai_pair = false;
+
+                            // Check for yaochuupai pair
+                            {
+                                let mut iter =
+                                    decomposer.chiitoutsu_kokushimusou_valid_tile_vec().iter();
+                                let first = iter.next();
+                                if let Some(mut last) = first {
+                                    for hai in iter {
+                                        if hai == last {
+                                            yaochuupai_pair = true;
+                                            break;
+                                        } else {
+                                            last = hai;
+                                        }
+                                    }
+                                }
+                                // If no yaochuupai pair, waiting for all yaochuupais.
+                                if !yaochuupai_pair {
+                                    for yaochuupai in yaochuupai_iter {
+                                        self.machihai.insert(*yaochuupai, 4);
+                                    }
+                                    return Ok(self);
+                                }
+                            }
+
+                            // If having yaochuupai pair, find missing yaochuupai.
+                            let mut yaochuupai_value = yaochuupai_iter.next();
+                            let mut kokushimusou_valid_value = kokushimusou_valid_iter.next();
+                            let mut yaochuupai_used = false;
+
+                            while yaochuupai_value != None && kokushimusou_valid_value != None {
+                                if let (Some(lhs), Some(rhs)) =
+                                    (yaochuupai_value, kokushimusou_valid_value)
+                                {
+                                    if lhs < rhs {
+                                        if !yaochuupai_used {
+                                            self.machihai.insert(*lhs, 4);
+                                        }
+                                        yaochuupai_used = false;
+                                        yaochuupai_value = yaochuupai_iter.next();
+                                    } else if lhs > rhs {
+                                        kokushimusou_valid_value = kokushimusou_valid_iter.next();
+                                    } else if lhs == rhs {
+                                        yaochuupai_used = true;
+                                        kokushimusou_valid_value = kokushimusou_valid_iter.next();
+                                    }
+                                }
+                            }
+                            if !yaochuupai_pair {
+                                if let Some(yaochuupai) = yaochuupai_value {
+                                    self.machihai.insert(*yaochuupai, 4);
+                                }
+                            }
+                            for rest in yaochuupai_iter {
+                                self.machihai.insert(*rest, 4);
+                            }
                         }
                     }
                     Ok(self)
@@ -925,70 +1133,59 @@ pub mod machi {
             }
         }
 
+        /// You should call `finally_handle` for checking machihai's number after all `handle`s.
         fn finally_handle(
             &mut self,
             tehai: &Tehai,
             yama: Option<&Haiyama>,
         ) -> Result<&mut Self, String> {
-            let mut check_count = |machihai: &mut BTreeMap<_, _>, item| -> bool {
+            let check_count = |machihai: &mut BTreeMap<_, _>, item| {
                 if machihai.contains_key(item) {
-                    if machihai[item] > 0 {
+                    if machihai[item] > 1 {
                         machihai.insert(*item, machihai[item] - 1);
-                        true
-                    } else {
-                        false
+                    } else if machihai[item] == 1 {
+                        machihai.remove(item);
                     }
-                } else {
-                    true
                 }
             };
 
-            if let Some(yama) = yama {}
+            // Not implement.
+            if let Some(_yama) = yama {}
 
             let menzen_vec = tehai.menzen.as_ref()?;
             for item in menzen_vec.iter() {
-                if !check_count(&mut self.machihai, item) {
-                    return Err(
-                        "Unhandled error: Number of a kind of tile more than 4.".to_string()
-                    );
-                }
+                check_count(&mut self.machihai, item);
             }
 
             for mentsu in tehai.fuuro.iter() {
                 match mentsu {
                     Mentsu::Juntsu(a, b, c) => {
-                        if !check_count(&mut self.machihai, a)
-                            || !check_count(&mut self.machihai, b)
-                            || !check_count(&mut self.machihai, c)
-                        {
-                            return Err("Unhandled error: Number of a kind of tile more than 4."
-                                .to_string());
-                        }
+                        check_count(&mut self.machihai, a);
+                        check_count(&mut self.machihai, b);
+                        check_count(&mut self.machihai, c);
                     }
                     Mentsu::Koutsu(item) => {
                         for _ in 0..3 {
-                            if !check_count(&mut self.machihai, item) {
-                                return Err(
-                                    "Unhandled error: Number of a kind of tile more than 4."
-                                        .to_string(),
-                                );
-                            }
+                            check_count(&mut self.machihai, item);
                         }
                     }
                     Mentsu::Kantsu(item) => {
                         for _ in 0..4 {
-                            if !check_count(&mut self.machihai, item) {
-                                return Err(
-                                    "Unhandled error: Number of a kind of tile more than 4."
-                                        .to_string(),
-                                );
-                            }
+                            check_count(&mut self.machihai, item);
                         }
                     }
                 }
             }
 
             Ok(self)
+        }
+
+        fn nokori(&self) -> usize {
+            let mut nokori = 0;
+            for (_, number) in self.machihai.iter() {
+                nokori += *number as usize;
+            }
+            nokori
         }
     }
 
@@ -1000,7 +1197,7 @@ pub mod machi {
             for (machihai, number) in self.machihai.iter() {
                 machihai_string += &machihai.to_string();
                 machihai_string += " ";
-                nokori += number;
+                nokori += *number as usize;
             }
             if self.furiten {
                 furiten_string = "!振り聴!".to_string();

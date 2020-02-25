@@ -71,9 +71,9 @@ pub struct Toitsu(pub Hai);
 pub struct Ukihai(pub Hai);
 
 /// Array of 1m 9m 1p 9p 1s 9s 1z 2z 3z 4z 5z 6z 7z.
-/// 
+///
 /// # Japanese
-/// * yaochuupai: 么九牌 
+/// * yaochuupai: 么九牌
 pub const YAOCHUUPAI: [Hai; 13] = [
     Hai::Manzu(1),
     Hai::Manzu(9),
@@ -125,6 +125,65 @@ pub struct Haiyama {
 }
 
 impl Hai {
+    /// Get before tile.
+    ///
+    /// # Parameters
+    /// * dora_loop: if dora_loop is false, before of 1m, 1p, 1s, 1z will be None.
+    /// Otherwise, before of 1m, 1p, 1s are 9m, 9p, 9s, before of 1z is 4z, before of 5z is 7z.
+    ///
+    /// # Examples
+    /// ```rust
+    /// assert_eq!(Hai::Manzu(4).before(false), Some(Hai::Manzu(3)));
+    /// assert_eq!(Hai::Pinzu(1).before(false), None);
+    /// assert_eq!(Hai::Jihai(5).before(true), Some(Hai::Jihai(9)));
+    /// ```
+    pub fn before(&self, dora_loop: bool) -> Option<Hai> {
+        match self {
+            Hai::Manzu(num) => {
+                if *num != 1 {
+                    Some(Hai::Manzu(*num - 1))
+                } else if dora_loop {
+                    Some(Hai::Manzu(9))
+                } else {
+                    None
+                }
+            }
+            Hai::Pinzu(num) => {
+                if *num != 1 {
+                    Some(Hai::Pinzu(*num - 1))
+                } else if dora_loop {
+                    Some(Hai::Pinzu(9))
+                } else {
+                    None
+                }
+            }
+            Hai::Souzu(num) => {
+                if *num != 1 {
+                    Some(Hai::Souzu(*num - 1))
+                } else if dora_loop {
+                    Some(Hai::Souzu(9))
+                } else {
+                    None
+                }
+            }
+            Hai::Jihai(num) => {
+                if dora_loop {
+                    if *num == 1 {
+                        Some(Hai::Jihai(4))
+                    } else if *num == 5 {
+                        Some(Hai::Jihai(7))
+                    } else {
+                        Some(Hai::Jihai(*num - 1))
+                    }
+                } else if *num != 1 {
+                    Some(Hai::Jihai(*num - 1))
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
     /// Get next tile.
     ///
     /// # Parameters
@@ -182,6 +241,24 @@ impl Hai {
                 }
             }
         }
+    }
+
+    /// Generate a array included all type of hai.
+    pub fn gen_all_type() -> HashSet<Hai> {
+        let mut all_hai_type = HashSet::new();
+        for index in 0u8..9u8 {
+            all_hai_type.insert(Hai::Manzu(index + 1));
+        }
+        for index in 9u8..18u8 {
+            all_hai_type.insert(Hai::Pinzu(index - 8));
+        }
+        for index in 18u8..27u8 {
+            all_hai_type.insert(Hai::Souzu(index - 17));
+        }
+        for index in 27u8..34u8 {
+            all_hai_type.insert(Hai::Jihai(index - 26));
+        }
+        all_hai_type
     }
 }
 

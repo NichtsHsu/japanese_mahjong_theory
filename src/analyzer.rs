@@ -831,6 +831,13 @@ pub mod machi {
                 for ukihai in decomposer.ukihai_vec().iter() {
                     sutehai_set.insert(ukihai.0);
                 }
+                if decomposer.hourakei() == Hourakei::Chiitoitsu {
+                    if decomposer.ukihai_vec().len() == 0 {
+                        for sutehai in decomposer.chiitoutsu_kokushimusou_valid_tile_vec().iter() {
+                            sutehai_set.insert(*sutehai);
+                        }
+                    }
+                }
             }
             for sutehai in sutehai_set {
                 let mut condition =
@@ -925,7 +932,14 @@ pub mod machi {
                         .ukihai_vec()
                         .contains(&Ukihai { 0: self.sutehai })
                     {
-                        return Ok(self);
+                        // Chiitoitsu is special.
+                        if decomposer.hourakei() == Hourakei::Chiitoitsu {
+                            if !decomposer.chiitoutsu_kokushimusou_valid_tile_vec().contains(&self.sutehai) {
+                                return Ok(self);
+                            }
+                        } else {
+                            return Ok(self);
+                        }
                     }
                     match decomposer.hourakei() {
                         Hourakei::Mentsute => {

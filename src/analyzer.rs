@@ -934,7 +934,10 @@ pub mod machi {
                     {
                         // Chiitoitsu is special.
                         if decomposer.hourakei() == Hourakei::Chiitoitsu {
-                            if !decomposer.chiitoutsu_kokushimusou_valid_tile_vec().contains(&self.sutehai) {
+                            if !decomposer
+                                .chiitoutsu_kokushimusou_valid_tile_vec()
+                                .contains(&self.sutehai)
+                            {
                                 return Ok(self);
                             }
                         } else {
@@ -950,6 +953,7 @@ pub mod machi {
                             {
                                 return Ok(self);
                             }
+
                             // If toitsu overload, no need to analyze.
                             if decomposer.mentsu_vec().len()
                                 + decomposer.taatsu_vec().len()
@@ -959,16 +963,15 @@ pub mod machi {
                                 return Ok(self);
                             }
 
-                            // Analyze full mentsu and 2 ukihai condition
+                            // Analyze full taatsu and no toitsu condition
+                            if decomposer.mentsu_vec().len() + decomposer.taatsu_vec().len()
+                                == max_mentsu_toitsu_taatsu - 1
+                                && decomposer.toitsu_vec().len() == 0
                             {
-                                if decomposer.mentsu_vec().len() == max_mentsu_toitsu_taatsu - 1
-                                    && decomposer.ukihai_vec().len() == 2
-                                {
-                                    for ukihai in decomposer.ukihai_vec().iter() {
-                                        if ukihai.0 != self.sutehai {
-                                            self.machihai.insert(ukihai.0, 4);
-                                            return Ok(self);
-                                        }
+                                for ukihai in decomposer.ukihai_vec().iter() {
+                                    if ukihai.0 != self.sutehai {
+                                        self.machihai.insert(ukihai.0, 4);
+                                        return Ok(self);
                                     }
                                 }
                             }
@@ -1032,33 +1035,38 @@ pub mod machi {
                                     }
                                     _ => (),
                                 }
+                            }
 
-                                // If more than 1 toitsu, analyze toitsu.
-                                if decomposer.toitsu_vec().len() > 1 {
-                                    for toitsu in decomposer.toitsu_vec().iter() {
-                                        self.machihai.insert(toitsu.0, 4);
-                                    }
+                            // If more than 1 toitsu, analyze toitsu.
+                            if decomposer.toitsu_vec().len() > 1 {
+                                for toitsu in decomposer.toitsu_vec().iter() {
+                                    self.machihai.insert(toitsu.0, 4);
                                 }
+                            }
 
-                                // If taatsu and toitsu not enough.
-                                if decomposer.mentsu_vec().len()
-                                    + decomposer.taatsu_vec().len()
-                                    + decomposer.toitsu_vec().len()
-                                    < max_mentsu_toitsu_taatsu
-                                {
-                                    for ukihai in decomposer.ukihai_vec().iter() {
-                                        if ukihai.0 != self.sutehai {
-                                            self.machihai.insert(ukihai.0, 4);
-                                            if let Some(machi) = ukihai.0.before(false) {
-                                                self.machihai.insert(machi, 4);
-                                                if let Some(machi_2) = machi.before(false) {
-                                                    self.machihai.insert(machi_2, 4);
+                            // If taatsu and toitsu not enough.
+                            if decomposer.mentsu_vec().len()
+                                + decomposer.taatsu_vec().len()
+                                + decomposer.toitsu_vec().len()
+                                < max_mentsu_toitsu_taatsu
+                            {
+                                for ukihai in decomposer.ukihai_vec().iter() {
+                                    if ukihai.0 != self.sutehai {
+                                        self.machihai.insert(ukihai.0, 4);
+                                        match ukihai.0 {
+                                            Hai::Jihai(_) => (),
+                                            _ => {
+                                                if let Some(machi) = ukihai.0.before(false) {
+                                                    self.machihai.insert(machi, 4);
+                                                    if let Some(machi_2) = machi.before(false) {
+                                                        self.machihai.insert(machi_2, 4);
+                                                    }
                                                 }
-                                            }
-                                            if let Some(machi) = ukihai.0.next(false) {
-                                                self.machihai.insert(machi, 4);
-                                                if let Some(machi_2) = machi.next(false) {
-                                                    self.machihai.insert(machi_2, 4);
+                                                if let Some(machi) = ukihai.0.next(false) {
+                                                    self.machihai.insert(machi, 4);
+                                                    if let Some(machi_2) = machi.next(false) {
+                                                        self.machihai.insert(machi_2, 4);
+                                                    }
                                                 }
                                             }
                                         }
@@ -1075,7 +1083,9 @@ pub mod machi {
                                 for hai in
                                     decomposer.chiitoutsu_kokushimusou_valid_tile_vec().iter()
                                 {
-                                    self.machihai.insert(*hai, 4);
+                                    if hai != &self.sutehai {
+                                        self.machihai.insert(*hai, 4);
+                                    }
                                 }
                             }
                             // Need more single tiles for shanten.

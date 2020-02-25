@@ -802,16 +802,16 @@ pub mod machi {
     use std::collections::{BTreeMap, HashSet};
 
     /// Main funtion of this mod.
-    /// 
+    ///
     /// # Japanese
     /// * tehai: 手牌
     /// * yama: 山
     /// * Haiyama: 牌山
-    /// 
+    ///
     /// # Parameter
     /// * tehai: input tiles.
     /// * yama: optional, all retained tiles on game.
-    /// 
+    ///
     /// # Return
     /// * i32: the number of shanten.
     /// * Vec<Condition>: all conditions of different sutehais.
@@ -833,7 +833,8 @@ pub mod machi {
                 }
             }
             for sutehai in sutehai_set {
-                let mut condition = Condition::new(sutehai, shanten_number);
+                let mut condition =
+                    Condition::new(sutehai, shanten_number, tehai.menzen.as_ref()?.len());
                 for decomposer in decomposers_set.iter() {
                     condition.handle(decomposer)?;
                 }
@@ -862,23 +863,32 @@ pub mod machi {
         let (shanten, conditions) = analyze(tehai, yama)?;
         println!("--------");
         println!("手牌：{}", tehai);
-        println!("向听：{}", shanten);
-        println!("--------");
-        for i in conditions.iter() {
-            println!("{}", i);
+        if shanten == -1 {
+            println!("和了");
+            println!("--------");
+        } else {
+            if shanten == 0 {
+                println!("聴牌");
+            } else {
+                println!("向聴：{}", shanten);
+            }
+            println!("--------");
+            for i in conditions.iter() {
+                println!("{}", i);
+            }
+            println!("--------");
         }
-        println!("--------");
         Ok((shanten, conditions))
     }
 
     /// Condition of different sutehais.
-    /// 
+    ///
     /// # Japanese
     /// * sutehai: 捨て牌
     /// * machihai: 待ち牌
     /// * furiten: 振り聴
     /// * shanten: 向聴
-    /// 
+    ///
     /// # Member
     /// * sutehai: which ukihai will be discarded.
     /// * machihai: tiles waiting for.
@@ -888,15 +898,17 @@ pub mod machi {
         pub machihai: BTreeMap<Hai, u8>,
         pub furiten: bool,
         shanten_number: i32,
+        hai_number: usize,
     }
 
     impl Condition {
-        fn new(sutehai: Hai, shanten_number: i32) -> Condition {
+        fn new(sutehai: Hai, shanten_number: i32, hai_number: usize) -> Condition {
             Condition {
                 sutehai,
                 machihai: BTreeMap::new(),
                 furiten: false,
                 shanten_number,
+                hai_number,
             }
         }
 
@@ -917,22 +929,25 @@ pub mod machi {
                     }
                     match decomposer.hourakei() {
                         Hourakei::Mentsute => {
+                            let max_mentsu_toitsu_taatsu = (self.hai_number + 1) / 3;
                             // If taatsu overload, no need to analyze.
-                            if decomposer.mentsu_vec().len() + decomposer.taatsu_vec().len() > 4 {
+                            if decomposer.mentsu_vec().len() + decomposer.taatsu_vec().len()
+                                > max_mentsu_toitsu_taatsu - 1
+                            {
                                 return Ok(self);
                             }
                             // If toitsu overload, no need to analyze.
                             if decomposer.mentsu_vec().len()
                                 + decomposer.taatsu_vec().len()
                                 + decomposer.toitsu_vec().len()
-                                > 5
+                                > max_mentsu_toitsu_taatsu
                             {
                                 return Ok(self);
                             }
 
-                            // Analyze 4 mentsu and 2 ukihai condition
+                            // Analyze full mentsu and 2 ukihai condition
                             {
-                                if decomposer.mentsu_vec().len() == 4
+                                if decomposer.mentsu_vec().len() == max_mentsu_toitsu_taatsu - 1
                                     && decomposer.ukihai_vec().len() == 2
                                 {
                                     for ukihai in decomposer.ukihai_vec().iter() {
@@ -1015,7 +1030,7 @@ pub mod machi {
                                 if decomposer.mentsu_vec().len()
                                     + decomposer.taatsu_vec().len()
                                     + decomposer.toitsu_vec().len()
-                                    < 5
+                                    < max_mentsu_toitsu_taatsu
                                 {
                                     for ukihai in decomposer.ukihai_vec().iter() {
                                         if ukihai.0 != self.sutehai {

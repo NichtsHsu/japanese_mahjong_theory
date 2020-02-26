@@ -32,9 +32,10 @@ pub mod input {
         let mut menzen = vec![];
         let mut fuuro = vec![];
         let mut hai_stash = vec![];
-        let mut menzen_stash = vec![];
+        let mut mentsu_stash = vec![];
         let mut on_mentsu = false;
 
+        // Take tiles from stash(hai_stash) to output(menzen or mentsu_stash).
         let push_into_hai_vec = |tile_type,
                                  index,
                                  stash: &mut Vec<char>,
@@ -60,6 +61,7 @@ pub mod input {
             }
         };
 
+        // Take tiles from stash to fuuro vector.
         let mut push_into_fuuro = |index, stash: &mut Vec<Hai>| -> Result<(), String> {
             if let Some(meld) = check_mentsu(stash) {
                 fuuro.push(meld);
@@ -74,7 +76,7 @@ pub mod input {
                 'm' | 'p' | 's' | 'z' => {
                     if on_mentsu {
                         if let Err(error) =
-                            push_into_hai_vec(ch, id, &mut hai_stash, &mut menzen_stash)
+                            push_into_hai_vec(ch, id, &mut hai_stash, &mut mentsu_stash)
                         {
                             return Tehai::new(Err(error), fuuro);
                         }
@@ -119,11 +121,12 @@ pub mod input {
                             fuuro,
                         );
                     };
-                    if let Err(error) = push_into_fuuro(id, &mut menzen_stash) {
+                    if let Err(error) = push_into_fuuro(id, &mut mentsu_stash) {
                         return Tehai::new(Err(error), fuuro);
                     }
                     on_mentsu = false;
                 }
+                // Ignore all spaces.
                 ' ' => (),
                 _ => {
                     return Tehai::new(
@@ -805,7 +808,6 @@ pub mod machi {
     ///
     /// # Japanese
     /// * tehai: 手牌
-    /// * yama: 山
     /// * Haiyama: 牌山
     ///
     /// # Parameter
@@ -831,6 +833,7 @@ pub mod machi {
                 for ukihai in decomposer.ukihai_vec().iter() {
                     sutehai_set.insert(ukihai.0);
                 }
+                // Only chiitoitsu type can discard valid tiles but not ukihai.
                 if decomposer.hourakei() == Hourakei::Chiitoitsu {
                     if decomposer.ukihai_vec().len() == 0 {
                         for sutehai in decomposer.chiitoutsu_kokushimusou_valid_tile_vec().iter() {
@@ -1173,6 +1176,7 @@ pub mod machi {
             tehai: &Tehai,
             yama: Option<&Haiyama>,
         ) -> Result<&mut Self, String> {
+            // Remove tiles whose valid number is 0.
             let check_count = |machihai: &mut BTreeMap<_, _>, item| {
                 if machihai.contains_key(item) {
                     if machihai[item] > 1 {
@@ -1183,7 +1187,7 @@ pub mod machi {
                 }
             };
 
-            // Not implement.
+            // Not implement yet.
             if let Some(_yama) = yama {}
 
             let menzen_vec = tehai.menzen.as_ref()?;
@@ -1214,6 +1218,10 @@ pub mod machi {
             Ok(self)
         }
 
+        /// Return numbers of all machihai.
+        /// 
+        /// # Japanese
+        /// * nokori: 残り
         fn nokori(&self) -> usize {
             let mut nokori = 0;
             for (_, number) in self.machihai.iter() {

@@ -317,6 +317,7 @@ impl Tehai {
         tehai
     }
 
+    /// Check if number of any kind of tiles more than 4.
     pub fn check_hai_in_four(&mut self) -> &mut Self {
         if let Ok(menzen_vec) = self.menzen.clone() {
             let mut tehai_map: HashMap<Hai, u8> = HashMap::new();

@@ -963,21 +963,6 @@ pub mod machi {
                                 return Ok(self);
                             }
 
-                            // Analyze full taatsu and no toitsu condition
-                            if decomposer.mentsu_vec().len() + decomposer.taatsu_vec().len()
-                                == max_mentsu_toitsu_taatsu - 1
-                                && decomposer.toitsu_vec().len() == 0
-                            {
-                                for ukihai in decomposer.ukihai_vec().iter() {
-                                    if ukihai.0 != self.sutehai {
-                                        self.machihai.insert(ukihai.0, 4);
-                                    }
-                                }
-                                if decomposer.taatsu_vec().len() == 0 {
-                                    return Ok(self);
-                                }
-                            }
-
                             // Analyze taatsu.
                             for taatsu in decomposer.taatsu_vec().iter() {
                                 match (taatsu.0, taatsu.1) {
@@ -1052,6 +1037,9 @@ pub mod machi {
                                 + decomposer.toitsu_vec().len()
                                 < max_mentsu_toitsu_taatsu
                             {
+                                for toitsu in decomposer.toitsu_vec().iter() {
+                                    self.machihai.insert(toitsu.0, 4);
+                                }
                                 for ukihai in decomposer.ukihai_vec().iter() {
                                     if ukihai.0 != self.sutehai {
                                         self.machihai.insert(ukihai.0, 4);

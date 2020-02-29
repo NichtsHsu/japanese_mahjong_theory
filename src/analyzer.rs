@@ -871,7 +871,6 @@ pub mod machi {
         yama: Option<&Haiyama>,
     ) -> Result<(i32, Vec<Condition>), String> {
         let (shanten, conditions) = analyze(tehai, yama)?;
-        println!("--------");
         println!("手牌：{}", tehai);
         if shanten == -1 {
             println!("和了");
@@ -886,7 +885,6 @@ pub mod machi {
             for i in conditions.iter() {
                 println!("{}", i);
             }
-            println!("--------");
         }
         Ok((shanten, conditions))
     }

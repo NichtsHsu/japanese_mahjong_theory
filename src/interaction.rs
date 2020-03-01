@@ -10,8 +10,16 @@ pub fn parse(arg: String) -> bool {
 
 fn noninteractive_parse(arg: String) -> bool {
     if arg == "interactive" || arg == "i" {
-        let mut interactive = global::INTERACTIVE.write().unwrap();
-        *interactive = true;
+        // Make scope let interactive unlock its write lock.
+        {
+            let mut interactive = global::INTERACTIVE.write().unwrap();
+            *interactive = true;
+        }
+        // Make scope let game unlock its write lock.
+        {
+            let mut game = global::GAME.write().unwrap();
+            game.initialize();
+        }
         false
     } else if arg == "noninteractive" || arg == "ni" {
         false
@@ -45,8 +53,16 @@ fn interactive_parse(arg: String) -> bool {
         }
         false
     } else if arg == "interactive" || arg == "i" {
-        let mut interactive = global::INTERACTIVE.write().unwrap();
-        *interactive = false;
+        // Make scope let interactive unlock its write lock.
+        {
+            let mut interactive = global::INTERACTIVE.write().unwrap();
+            *interactive = false;
+        }
+        // Make scope let game unlock its write lock.
+        {
+            let mut game = global::GAME.write().unwrap();
+            game.initialize();
+        }
         false
     } else if arg == "exit" || arg == "quit" || arg == "q" {
         true
@@ -72,6 +88,17 @@ fn interactive_parse(arg: String) -> bool {
         {
             let mut game = global::GAME.write().unwrap();
             game.initialize();
+        }
+        false
+    } else if arg == "status" || arg == "s" {
+        let output_format = *global::OUTPUT_FORMAT.read().unwrap();
+        match output_format {
+            global::OutputFormat::Standard => {
+                start_print();
+                let game = global::GAME.read().unwrap();
+                println!("{}", game.to_string());
+            }
+            global::OutputFormat::Json => {}
         }
         false
     } else {

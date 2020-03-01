@@ -473,3 +473,33 @@ impl Haiyama {
         self
     }
 }
+
+impl ToString for Haiyama {
+    fn to_string(&self) -> String {
+        if self.nokori.len() == 0 {
+            return "Not Initialized.".to_string();
+        }
+
+        let mut nokori_string = "牌山:\n  ".to_string();
+        for (hai, number) in self.nokori.iter() {
+            nokori_string += &hai.to_string();
+            nokori_string += ":";
+            nokori_string += &number.to_string();
+            match hai {
+                Hai::Manzu(9) | Hai::Pinzu(9) | Hai::Souzu(9) => nokori_string += "\n  ",
+                _ => nokori_string += " ",
+            }
+        }
+        let mut sutehai_string = "捨て牌の種類:\n  ".to_string();
+        if self.sutehai_type.len() == 0 {
+            sutehai_string += "無し";
+        } else {
+            for hai in self.sutehai_type.iter() {
+                sutehai_string += &hai.to_string();
+                sutehai_string += " ";
+            }
+        }
+
+        format!("{}\n{}", nokori_string, sutehai_string)
+    }
+}

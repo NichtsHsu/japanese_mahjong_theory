@@ -28,3 +28,16 @@ impl Game {
         self.tehai.as_mut()
     }
 }
+
+impl ToString for Game {
+    fn to_string(&self) -> String {
+        format!(
+            "{}\n手牌:\n  {}",
+            self.yama.to_string(),
+            match &self.tehai {
+                Some(tehai) => tehai.to_string(),
+                None => "Not initialized.".to_string(),
+            }
+        )
+    }
+}

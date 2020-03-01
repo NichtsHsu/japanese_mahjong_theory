@@ -912,30 +912,6 @@ pub mod machi {
         Ok((shanten_number, conditions_vec))
     }
 
-    /// A shell of `analyze`, print the result.
-    pub fn analyze_and_print(
-        tehai: &Tehai,
-        yama: Option<&Haiyama>,
-    ) -> Result<(i32, Vec<Condition>), String> {
-        let (shanten, conditions) = analyze(tehai, yama)?;
-        println!("手牌：{}", tehai);
-        if shanten == -1 {
-            println!("和了");
-            println!("--------");
-        } else {
-            if shanten == 0 {
-                println!("聴牌");
-            } else {
-                println!("向聴：{}", shanten);
-            }
-            println!("--------");
-            for i in conditions.iter() {
-                println!("{}", i);
-            }
-        }
-        Ok((shanten, conditions))
-    }
-
     /// Condition of different sutehais.
     ///
     /// # Japanese

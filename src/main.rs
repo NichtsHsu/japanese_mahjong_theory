@@ -20,6 +20,7 @@ fn main() {
 fn run() -> Result<(), String> {
     initialize()?;
 
+    // Main loop
     loop {
         let mut input = String::new();
         let output_format = *global::OUTPUT_FORMAT.read().unwrap();
@@ -28,20 +29,23 @@ fn run() -> Result<(), String> {
                 print!("<<< ");
                 stdout().flush().unwrap();
             }
-            global::OutputFormat::Json => {}
+            global::OutputFormat::Json => ()
         }
 
         if let Err(_) = stdin().read_line(&mut input) {
             println!("Unable to read user input");
             continue;
         }
-        interaction::parse(input.trim().to_string());
+        if interaction::parse(input.trim().to_string()) {
+            break Ok(());
+        }
     }
 }
 
 fn initialize() -> Result<(), String> {
+    // Handle program arguments.
     let matches = App::new("Japanese Mahjong Theory")
-        .version("1.01")
+        .version("1.03")
         .author("Nichts Hsu <NichtsVonChaos@gmail.com>")
         .arg(
             Arg::with_name("format")

@@ -1,7 +1,7 @@
 //! This mod defines all structures for an entire mahjong game.
 
 use crate::global;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::Hash;
 
 /// Type of a tile.
@@ -121,8 +121,8 @@ pub struct Tehai {
 /// * nokori: 残り
 /// * sutehai: 捨て牌
 pub struct Haiyama {
-    pub nokori: HashMap<Hai, u8>,
-    pub sutehai_type: HashSet<Hai>,
+    pub nokori: BTreeMap<Hai, u8>,
+    pub sutehai_type: BTreeSet<Hai>,
 }
 
 impl Hai {
@@ -454,5 +454,22 @@ impl std::fmt::Display for Tehai {
         }
 
         write!(f, "{}", format_string)
+    }
+}
+
+impl Haiyama {
+    pub fn new() -> Self {
+        Haiyama {
+            nokori: BTreeMap::new(),
+            sutehai_type: BTreeSet::new(),
+        }
+    }
+
+    pub fn initialize(&mut self) -> &mut Self {
+        for hai in Hai::gen_all_type() {
+            self.nokori.insert(hai, 4);
+        }
+        self.sutehai_type.clear();
+        self
     }
 }

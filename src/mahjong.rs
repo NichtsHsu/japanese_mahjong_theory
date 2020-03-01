@@ -1,5 +1,6 @@
 //! This mod defines all structures for an entire mahjong game.
 
+use crate::global;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
@@ -133,21 +134,41 @@ impl Hai {
     ///
     /// # Examples
     /// ```rust
+    /// // If 4-players mode
     /// assert_eq!(Hai::Manzu(4).before(false), Some(Hai::Manzu(3)));
     /// assert_eq!(Hai::Pinzu(1).before(false), None);
     /// assert_eq!(Hai::Jihai(5).before(true), Some(Hai::Jihai(9)));
+    /// // If 3-players mode
+    /// assert_eq!(Hai::Manzu(9).before(true), Some(Hai::Manzu(1)));
     /// ```
     pub fn before(&self, dora_loop: bool) -> Option<Hai> {
+        let players_number = *global::PLAYERS_NUMBER.read().unwrap();
+
         match self {
-            Hai::Manzu(num) => {
-                if *num != 1 {
-                    Some(Hai::Manzu(*num - 1))
-                } else if dora_loop {
-                    Some(Hai::Manzu(9))
-                } else {
-                    None
+            Hai::Manzu(num) => match players_number {
+                global::Players::Four => {
+                    if *num != 1 {
+                        Some(Hai::Manzu(*num - 1))
+                    } else if dora_loop {
+                        Some(Hai::Manzu(9))
+                    } else {
+                        None
+                    }
                 }
-            }
+                global::Players::Three => {
+                    if dora_loop {
+                        if *num == 1 {
+                            Some(Hai::Manzu(9))
+                        } else if *num == 9 {
+                            Some(Hai::Manzu(1))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
+            },
             Hai::Pinzu(num) => {
                 if *num != 1 {
                     Some(Hai::Pinzu(*num - 1))
@@ -192,21 +213,41 @@ impl Hai {
     ///
     /// # Examples
     /// ```rust
+    /// // If 4-players mode
     /// assert_eq!(Hai::Manzu(4).next(false), Some(Hai::Manzu(5)));
     /// assert_eq!(Hai::Pinzu(9).next(false), None);
     /// assert_eq!(Hai::Jihai(4).next(true), Some(Hai::Jihai(1)));
+    /// // If 3-players mode
+    /// assert_eq!(Hai::Manzu(1).next(true), Some(Hai::Manzu(9)));
     /// ```
     pub fn next(&self, dora_loop: bool) -> Option<Hai> {
+        let players_number = *global::PLAYERS_NUMBER.read().unwrap();
+
         match self {
-            Hai::Manzu(num) => {
-                if *num != 9 {
-                    Some(Hai::Manzu(*num + 1))
-                } else if dora_loop {
-                    Some(Hai::Manzu(1))
-                } else {
-                    None
+            Hai::Manzu(num) => match players_number {
+                global::Players::Four => {
+                    if *num != 9 {
+                        Some(Hai::Manzu(*num + 1))
+                    } else if dora_loop {
+                        Some(Hai::Manzu(1))
+                    } else {
+                        None
+                    }
                 }
-            }
+                global::Players::Three => {
+                    if dora_loop {
+                        if *num == 1 {
+                            Some(Hai::Manzu(9))
+                        } else if *num == 9 {
+                            Some(Hai::Manzu(1))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
+            },
             Hai::Pinzu(num) => {
                 if *num != 9 {
                     Some(Hai::Pinzu(*num + 1))
@@ -245,19 +286,30 @@ impl Hai {
 
     /// Generate a array included all type of hai.
     pub fn gen_all_type() -> HashSet<Hai> {
+        let players_number = *global::PLAYERS_NUMBER.read().unwrap();
+
         let mut all_hai_type = HashSet::new();
-        for index in 0u8..9u8 {
-            all_hai_type.insert(Hai::Manzu(index + 1));
+        match players_number {
+            global::Players::Four => {
+                for index in 1u8..=9u8 {
+                    all_hai_type.insert(Hai::Manzu(index));
+                }
+            }
+            global::Players::Three => {
+                all_hai_type.insert(Hai::Manzu(1));
+                all_hai_type.insert(Hai::Manzu(9));
+            }
+        };
+
+        for index in 1u8..=9u8 {
+            all_hai_type.insert(Hai::Pinzu(index));
+            all_hai_type.insert(Hai::Souzu(index));
         }
-        for index in 9u8..18u8 {
-            all_hai_type.insert(Hai::Pinzu(index - 8));
+
+        for index in 1u8..=7u8 {
+            all_hai_type.insert(Hai::Jihai(index));
         }
-        for index in 18u8..27u8 {
-            all_hai_type.insert(Hai::Souzu(index - 17));
-        }
-        for index in 27u8..34u8 {
-            all_hai_type.insert(Hai::Jihai(index - 26));
-        }
+
         all_hai_type
     }
 }

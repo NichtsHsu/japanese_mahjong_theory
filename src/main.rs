@@ -41,7 +41,7 @@ fn run() -> Result<(), String> {
 
 fn initialize() -> Result<(), String> {
     let matches = App::new("Japanese Mahjong Theory")
-        .version("1.1")
+        .version("1.01")
         .author("Nichts Hsu <NichtsVonChaos@gmail.com>")
         .arg(
             Arg::with_name("format")

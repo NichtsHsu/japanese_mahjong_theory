@@ -2,7 +2,7 @@
 
 /// This mod analyzes input string.
 pub mod input {
-    use crate::mahjong::*;
+    use crate::{global, mahjong::*};
 
     /// Parse a string to instance of Tehai.
     ///
@@ -48,13 +48,19 @@ pub mod input {
                 ))
             } else {
                 for tile in stash.iter() {
-                    output.push(match tile_type {
+                    let hai = match tile_type {
                         'm' => Manzu(*tile as u8 - 48),
                         'p' => Pinzu(*tile as u8 - 48),
                         's' => Souzu(*tile as u8 - 48),
                         'z' => Jihai(*tile as u8 - 48),
                         _ => Manzu(0), // Never reach here.
-                    })
+                    };
+                    if check_hai_in_range(&hai) {
+                        output.push(hai);
+                    } else {
+                        stash.clear();
+                        return Err(format!("Out-of-range tile '{}' found.", hai.to_string()));
+                    }
                 }
                 stash.clear();
                 Ok(())
@@ -146,18 +152,11 @@ pub mod input {
         }
     }
 
-    /// Check if tiles in range.
-    ///
-    /// # Examples
-    /// ```rust
-    /// use mahjong::Hai::*;
-    /// assert_eq!(check_hai_in_range(vec![Manzu(1), Souzu(9), Jihai(7)]), true);
-    /// assert_eq!(check_hai_in_range(vec![Manzu(4), Jihai(8)]), false);
-    /// ```
-    pub fn check_hai_in_range(hai_vec: &Vec<Hai>) -> bool {
+    pub fn check_hai_in_range(hai: &Hai) -> bool {
         use Hai::*;
-        for hai in hai_vec.iter() {
-            match hai {
+        let players_number = *global::PLAYERS_NUMBER.read().unwrap();
+        match players_number {
+            global::Players::Four => match hai {
                 Manzu(num) | Pinzu(num) | Souzu(num) => {
                     if *num < 1 || *num > 9 {
                         return false;
@@ -168,6 +167,45 @@ pub mod input {
                         return false;
                     }
                 }
+            },
+            global::Players::Three => match hai {
+                // Only 1m and 9m exist on 3-players mahjong.
+                Manzu(num) => {
+                    if *num != 1 && *num != 9 {
+                        return false;
+                    }
+                }
+                Pinzu(num) | Souzu(num) => {
+                    if *num < 1 || *num > 9 {
+                        return false;
+                    }
+                }
+                Jihai(num) => {
+                    if *num < 1 || *num > 7 {
+                        return false;
+                    }
+                }
+            },
+        }
+
+        true
+    }
+
+    /// Check if vector of tiles in range.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use mahjong::Hai::*;
+    /// // If 4-players mode
+    /// assert_eq!(check_hai_vec_in_range(vec![Manzu(6), Souzu(9), Jihai(7)]), true);
+    /// assert_eq!(check_hai_vec_in_range(vec![Manzu(4), Jihai(8)]), false);
+    /// // If 3-players mode
+    /// assert_eq!(check_hai_vec_in_range(vec![Manzu(4), Pinzu(4)]), false);
+    /// ```
+    pub fn check_hai_vec_in_range(hai_vec: &Vec<Hai>) -> bool {
+        for hai in hai_vec.iter() {
+            if !check_hai_in_range(hai) {
+                return false;
             }
         }
 
@@ -180,9 +218,12 @@ pub mod input {
     /// ```rust
     /// use mahjong::Hai::*;
     /// use mahjong::Mentsu::*;
+    /// // If 4-players mode
     /// assert_eq!(check_mentsu(vec![Manzu(1), Manzu(2), Manzu(3)]), Juntsu(Manzu(1), Manzu(2), Manzu(3)));
     /// assert_eq!(check_mentsu(vec![Pinzu(7), Pinzu(7), Pinzu(7)]), Koutsu(Pinzu(7)));
     /// assert_eq!(check_mentsu(vec![Jihai(8), Jihai(8), Jihai(8)]), None);
+    /// // If 3-players mode
+    /// assert_eq!(check_mentsu(vec![Manzu(1), Manzu(2), Manzu(3)]), None);
     /// ```
     pub fn check_mentsu(hai_vec: &Vec<Hai>) -> Option<Mentsu> {
         use Hai::*;
@@ -204,7 +245,7 @@ pub mod input {
                 None
             }
         }
-        if !check_hai_in_range(hai_vec) {
+        if !check_hai_vec_in_range(hai_vec) {
             None
         } else if hai_vec.len() == 4 {
             if hai_vec[0] == hai_vec[1] && hai_vec[0] == hai_vec[2] && hai_vec[0] == hai_vec[3] {
@@ -218,10 +259,16 @@ pub mod input {
             } else {
                 match (hai_vec[0], hai_vec[1], hai_vec[2]) {
                     (Manzu(a), Manzu(b), Manzu(c)) => {
-                        if let Some((a, b, c)) = check_juntsu(a, b, c) {
-                            Some(Juntsu(Manzu(a), Manzu(b), Manzu(c)))
-                        } else {
-                            None
+                        let players_number = *global::PLAYERS_NUMBER.read().unwrap();
+                        match players_number {
+                            global::Players::Four => {
+                                if let Some((a, b, c)) = check_juntsu(a, b, c) {
+                                    Some(Juntsu(Manzu(a), Manzu(b), Manzu(c)))
+                                } else {
+                                    None
+                                }
+                            }
+                            global::Players::Three => None,
                         }
                     }
                     (Pinzu(a), Pinzu(b), Pinzu(c)) => {
@@ -1217,7 +1264,7 @@ pub mod machi {
         }
 
         /// Return numbers of all machihai.
-        /// 
+        ///
         /// # Japanese
         /// * nokori: 残り
         fn nokori(&self) -> usize {

@@ -849,6 +849,7 @@ pub mod shanten {
 pub mod machi {
     use super::shanten::{self, Decomposer, Hourakei};
     use crate::mahjong::*;
+    use serde_json::json;
     use std::collections::{BTreeMap, HashSet};
 
     /// Main funtion of this mod.
@@ -933,7 +934,7 @@ pub mod machi {
     }
 
     impl Condition {
-        fn new(sutehai: Hai, shanten_number: i32, hai_number: usize) -> Condition {
+        pub fn new(sutehai: Hai, shanten_number: i32, hai_number: usize) -> Condition {
             Condition {
                 sutehai,
                 machihai: BTreeMap::new(),
@@ -946,7 +947,7 @@ pub mod machi {
         /// Input a decomposer and analyze what tiles it is waiting for.
         /// The number of hai always set to 4 when inserting tiles into self.machihai.
         /// Therefore, calling `finally_handle` after calling all `handle`s is necessary.
-        fn handle(&mut self, decomposer: &Decomposer) -> Result<&mut Self, String> {
+        pub fn handle(&mut self, decomposer: &Decomposer) -> Result<&mut Self, String> {
             match self.shanten_number {
                 n @ std::i32::MIN..=-2 => Err(format!("Unhandled error: shanten number is {}.", n)),
                 -1 => Ok(self),
@@ -1192,7 +1193,7 @@ pub mod machi {
         }
 
         /// You should call `finally_handle` for checking machihai's number after all `handle`s.
-        fn finally_handle(
+        pub fn finally_handle(
             &mut self,
             tehai: &Tehai,
             yama: Option<&Haiyama>,
@@ -1243,12 +1244,28 @@ pub mod machi {
         ///
         /// # Japanese
         /// * nokori: 残り
-        fn nokori(&self) -> usize {
+        pub fn nokori(&self) -> usize {
             let mut nokori = 0;
             for (_, number) in self.machihai.iter() {
                 nokori += *number as usize;
             }
             nokori
+        }
+
+        pub fn to_json(&self) -> serde_json::Value {
+            let mut machi_hai_json_vec = vec![];
+            for (hai, num) in &self.machihai {
+                machi_hai_json_vec.push(json!({
+                    "tile": hai.to_string(),
+                    "number": num
+                }));
+            }
+            json!({
+                "sutehai": self.sutehai.to_string(),
+                "furiten": self.furiten,
+                "machihai_number": self.nokori(),
+                "machihai": machi_hai_json_vec
+            })
         }
     }
 

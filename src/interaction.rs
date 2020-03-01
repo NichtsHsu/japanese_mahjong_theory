@@ -1,4 +1,5 @@
 use crate::{analyzer, global, mahjong::*};
+use serde_json::json;
 
 pub fn parse(arg: String) -> bool {
     let interactive = *global::INTERACTIVE.read().unwrap();
@@ -98,7 +99,10 @@ fn interactive_parse(arg: String) -> bool {
                 let game = global::GAME.read().unwrap();
                 println!("{}", game.to_string());
             }
-            global::OutputFormat::Json => {}
+            global::OutputFormat::Json => {
+                let game = global::GAME.read().unwrap();
+                println!("{}", game.to_json());
+            }
         }
         false
     } else {
@@ -141,7 +145,7 @@ fn base_analyze(arg: String) {
                             println!("向聴：{}", shanten);
                         }
                         println!("--------");
-                        for i in conditions.iter() {
+                        for i in conditions {
                             println!("{}", i);
                         }
                     }
@@ -149,6 +153,22 @@ fn base_analyze(arg: String) {
                 Err(error) => println!("{}", error),
             }
         }
-        global::OutputFormat::Json => {}
+        global::OutputFormat::Json => println!(
+            "{}",
+            match result {
+                Ok((shanten, conditions)) => {
+                    let mut condition_json_vec = vec![];
+                    for i in conditions {
+                        condition_json_vec.push(i.to_json());
+                    }
+                    json!({
+                        "tehai": tehai.to_json(),
+                        "shanten_number": shanten,
+                        "conditions": condition_json_vec
+                    })
+                }
+                Err(error) => json!({ "error": error }),
+            }
+        ),
     }
 }

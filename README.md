@@ -45,7 +45,7 @@
 * `-V`,`--version` 打印版本信息
 * `-h`,`--help` 打印启动参数列表
 * `-i`,`--interactive` 以交互模式启动（暂未实现）
-* `-f=type`,`--format=type` 设置输出模式，现支持standard（标准模式，默认）和json（用于后端模式，暂未实现）。
+* `-f=type`,`--format=type` 设置输出模式，现支持standard（标准模式，默认）和json（用于后端模式）。
 * `-p=num`,`--player=num` 设置游戏人数为4（四麻，默认）或3（三麻），三麻缺少2~8万。
 
 #### 交互式命令

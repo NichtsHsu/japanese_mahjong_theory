@@ -1,6 +1,7 @@
 //! This mod defines all structures for an entire mahjong game.
 
 use crate::global;
+use serde_json::json;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::Hash;
 
@@ -325,6 +326,42 @@ impl ToString for Hai {
     }
 }
 
+impl Mentsu {
+    fn to_json(&self) -> serde_json::Value {
+        let mut hai_string_vec = vec![];
+        match self {
+            Mentsu::Juntsu(a, b, c) => {
+                hai_string_vec.push(a.to_string());
+                hai_string_vec.push(b.to_string());
+                hai_string_vec.push(c.to_string());
+                json!({
+                    "type":"juntsu",
+                    "tiles":hai_string_vec
+                })
+            }
+            Mentsu::Koutsu(a) => {
+                hai_string_vec.push(a.to_string());
+                hai_string_vec.push(a.to_string());
+                hai_string_vec.push(a.to_string());
+                json!({
+                    "type":"koutsu",
+                    "tiles":hai_string_vec
+                })
+            }
+            Mentsu::Kantsu(a) => {
+                hai_string_vec.push(a.to_string());
+                hai_string_vec.push(a.to_string());
+                hai_string_vec.push(a.to_string());
+                hai_string_vec.push(a.to_string());
+                json!({
+                    "type":"kantsu",
+                    "tiles":hai_string_vec
+                })
+            }
+        }
+    }
+}
+
 impl ToString for Mentsu {
     fn to_string(&self) -> String {
         match self {
@@ -425,6 +462,22 @@ impl Tehai {
         }
         self
     }
+
+    pub fn to_json(&self) -> serde_json::Value {
+        let menzen_vec = self.menzen.as_ref().unwrap();
+        let mut menzen_string_vec = vec![];
+        for hai in menzen_vec {
+            menzen_string_vec.push(hai.to_string());
+        }
+        let mut fuuro_mentsu_json_vec = vec![];
+        for mentsu in &self.fuuro {
+            fuuro_mentsu_json_vec.push(mentsu.to_json());
+        }
+        json!({
+           "menzen": menzen_string_vec,
+           "fuuro": fuuro_mentsu_json_vec
+        })
+    }
 }
 
 impl From<String> for Tehai {
@@ -458,6 +511,7 @@ impl std::fmt::Display for Tehai {
 }
 
 impl Haiyama {
+    /// Create empty haiyama.
     pub fn new() -> Self {
         Haiyama {
             nokori: BTreeMap::new(),
@@ -465,12 +519,35 @@ impl Haiyama {
         }
     }
 
+    /// Initialize haiyama.
     pub fn initialize(&mut self) -> &mut Self {
         for hai in Hai::gen_all_type() {
             self.nokori.insert(hai, 4);
         }
         self.sutehai_type.clear();
         self
+    }
+
+    pub fn to_json(&self) -> [serde_json::Value; 2] {
+        if self.nokori.len() == 0 {
+            return [
+                json!("Not Initialized."),
+                json!([]),
+            ];
+        }
+        let mut nokori_json_vec = vec![];
+        for (hai, number) in self.nokori.iter() {
+            nokori_json_vec.push(json!({
+                "tile": hai.to_string(),
+                "number": number,
+            }));
+        }
+        let mut sutehai_type_string_vec = vec![];
+        for hai in self.sutehai_type.iter() {
+            sutehai_type_string_vec.push(hai.to_string());
+        }
+
+        [json!(nokori_json_vec), json!(sutehai_type_string_vec)]
     }
 }
 

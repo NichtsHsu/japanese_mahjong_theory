@@ -5,7 +5,10 @@ mod interaction;
 mod mahjong;
 
 use clap::{App, Arg};
-use std::{io::{Write, stdin, stdout}, process};
+use std::{
+    io::{stdin, stdout, Write},
+    process,
+};
 
 fn main() {
     process::exit(match run() {
@@ -29,7 +32,7 @@ fn run() -> Result<(), String> {
                 print!("<<< ");
                 stdout().flush().unwrap();
             }
-            global::OutputFormat::Json => ()
+            global::OutputFormat::Json => (),
         }
 
         if let Err(_) = stdin().read_line(&mut input) {
@@ -45,7 +48,7 @@ fn run() -> Result<(), String> {
 fn initialize() -> Result<(), String> {
     // Handle program arguments.
     let matches = App::new("Japanese Mahjong Theory")
-        .version("1.04")
+        .version("1.05")
         .author("Nichts Hsu <NichtsVonChaos@gmail.com>")
         .arg(
             Arg::with_name("format")

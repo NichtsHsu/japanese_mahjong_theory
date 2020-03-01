@@ -13,6 +13,8 @@ fn noninteractive_parse(arg: String) -> bool {
         let mut interactive = global::INTERACTIVE.write().unwrap();
         *interactive = true;
         false
+    } else if arg == "noninteractive" || arg == "ni" {
+        false
     } else if arg == "exit" || arg == "quit" || arg == "q" {
         true
     } else if arg == "3pl" {
@@ -41,6 +43,10 @@ fn interactive_parse(arg: String) -> bool {
             let mut interactive = global::INTERACTIVE.write().unwrap();
             *interactive = false;
         }
+        false
+    } else if arg == "interactive" || arg == "i" {
+        let mut interactive = global::INTERACTIVE.write().unwrap();
+        *interactive = false;
         false
     } else if arg == "exit" || arg == "quit" || arg == "q" {
         true

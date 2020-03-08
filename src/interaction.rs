@@ -4,8 +4,8 @@ use serde_json::json;
 pub fn parse(arg: String) -> bool {
     let interactive = *global::INTERACTIVE.read().unwrap();
     match interactive {
-        false => noninteractive_parse(arg),
-        true => interactive_parse(arg),
+        global::InteractiveState::Noninteractive => noninteractive_parse(arg),
+        _ => interactive_parse(arg),
     }
 }
 
@@ -14,7 +14,7 @@ fn noninteractive_parse(arg: String) -> bool {
         // Make scope let interactive unlock its write lock.
         {
             let mut interactive = global::INTERACTIVE.write().unwrap();
-            *interactive = true;
+            *interactive = global::InteractiveState::WaitForFirstInput;
         }
         // Make scope let game unlock its write lock.
         {
@@ -50,14 +50,14 @@ fn interactive_parse(arg: String) -> bool {
         // Make scope let interactive unlock its write lock.
         {
             let mut interactive = global::INTERACTIVE.write().unwrap();
-            *interactive = false;
+            *interactive = global::InteractiveState::Noninteractive;
         }
         false
     } else if arg == "interactive" || arg == "i" {
         // Make scope let interactive unlock its write lock.
         {
             let mut interactive = global::INTERACTIVE.write().unwrap();
-            *interactive = false;
+            *interactive = global::InteractiveState::WaitForFirstInput;
         }
         // Make scope let game unlock its write lock.
         {
@@ -119,8 +119,8 @@ fn start_print() {
             ">>> [{},{}]",
             players_number.to_string(),
             match interactive {
-                true => "I",
-                false => "NI",
+                global::InteractiveState::Noninteractive => "NI",
+                _ => "I",
             }
         )
     }
@@ -171,4 +171,15 @@ fn base_analyze(arg: String) {
             }
         ),
     }
+}
+
+/// Check if input is 14 tiles.
+fn is_standard_full_tiles(tehai: &Tehai) -> bool {
+    if let Ok(menzen_vec) = tehai.menzen.as_ref() {
+        if menzen_vec.len() + tehai.fuuro.len() * 3 == 14 {
+            return true;
+        }
+    }
+
+    false
 }

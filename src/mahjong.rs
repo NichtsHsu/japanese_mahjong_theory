@@ -2,7 +2,7 @@
 
 use crate::global;
 use serde_json::json;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
 /// Type of a tile.
@@ -113,17 +113,6 @@ pub const YAOCHUUPAI: [Hai; 13] = [
 pub struct Tehai {
     pub menzen: Result<Vec<Hai>, String>,
     pub fuuro: Vec<Mentsu>,
-}
-
-/// Tiles on wall.
-///
-/// # Japanese
-/// * Haiyama: 牌山
-/// * nokori: 残り
-/// * sutehai: 捨て牌
-pub struct Haiyama {
-    pub nokori: BTreeMap<Hai, u8>,
-    pub sutehai_type: BTreeSet<Hai>,
 }
 
 impl Hai {
@@ -507,76 +496,5 @@ impl std::fmt::Display for Tehai {
         }
 
         write!(f, "{}", format_string)
-    }
-}
-
-impl Haiyama {
-    /// Create empty haiyama.
-    pub fn new() -> Self {
-        Haiyama {
-            nokori: BTreeMap::new(),
-            sutehai_type: BTreeSet::new(),
-        }
-    }
-
-    /// Initialize haiyama.
-    pub fn initialize(&mut self) -> &mut Self {
-        for hai in Hai::gen_all_type() {
-            self.nokori.insert(hai, 4);
-        }
-        self.sutehai_type.clear();
-        self
-    }
-
-    pub fn to_json(&self) -> [serde_json::Value; 2] {
-        if self.nokori.len() == 0 {
-            return [
-                json!("Not Initialized."),
-                json!([]),
-            ];
-        }
-        let mut nokori_json_vec = vec![];
-        for (hai, number) in self.nokori.iter() {
-            nokori_json_vec.push(json!({
-                "tile": hai.to_string(),
-                "number": number,
-            }));
-        }
-        let mut sutehai_type_string_vec = vec![];
-        for hai in self.sutehai_type.iter() {
-            sutehai_type_string_vec.push(hai.to_string());
-        }
-
-        [json!(nokori_json_vec), json!(sutehai_type_string_vec)]
-    }
-}
-
-impl ToString for Haiyama {
-    fn to_string(&self) -> String {
-        if self.nokori.len() == 0 {
-            return "Not Initialized.".to_string();
-        }
-
-        let mut nokori_string = "牌山:\n  ".to_string();
-        for (hai, number) in self.nokori.iter() {
-            nokori_string += &hai.to_string();
-            nokori_string += ":";
-            nokori_string += &number.to_string();
-            match hai {
-                Hai::Manzu(9) | Hai::Pinzu(9) | Hai::Souzu(9) => nokori_string += "\n  ",
-                _ => nokori_string += " ",
-            }
-        }
-        let mut sutehai_string = "捨て牌の種類:\n  ".to_string();
-        if self.sutehai_type.len() == 0 {
-            sutehai_string += "無し";
-        } else {
-            for hai in self.sutehai_type.iter() {
-                sutehai_string += &hai.to_string();
-                sutehai_string += " ";
-            }
-        }
-
-        format!("{}\n{}", nokori_string, sutehai_string)
     }
 }

@@ -116,7 +116,10 @@ fn initialize() -> Result<(), String> {
         global::PLAYERS_NUMBER.set(global::Players::Four).unwrap();
     }
 
-    let interactive = matches.is_present("interactive");
+    let interactive = match matches.is_present("interactive") {
+        true => global::InteractiveState::WaitForFirstInput,
+        false => global::InteractiveState::Noninteractive,
+    };
     global::INTERACTIVE.set(interactive).unwrap();
 
     Ok(())

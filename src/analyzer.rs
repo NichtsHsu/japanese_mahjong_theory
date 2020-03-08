@@ -848,7 +848,7 @@ pub mod shanten {
 /// * machi: 待ち
 pub mod machi {
     use super::shanten::{self, Decomposer, Hourakei};
-    use crate::mahjong::*;
+    use crate::{mahjong::*,game::Game};
     use serde_json::json;
     use std::collections::{BTreeMap, HashSet};
 
@@ -856,17 +856,17 @@ pub mod machi {
     ///
     /// # Japanese
     /// * tehai: 手牌
-    /// * Haiyama: 牌山
+    /// * haiyama: 牌山
     ///
     /// # Parameter
     /// * tehai: input tiles.
-    /// * yama: optional, all retained tiles on game.
+    /// * haiyama: optional, all retained tiles on game.
     ///
     /// # Return
     /// * i32: the number of shanten.
     /// * Vec<Condition>: all conditions of different sutehais.
     /// * String: error message.
-    pub fn analyze(tehai: &Tehai, yama: Option<&Haiyama>) -> Result<(i32, Vec<Condition>), String> {
+    pub fn analyze(tehai: &Tehai, haiyama: Option<&Game>) -> Result<(i32, Vec<Condition>), String> {
         let (shanten_number, decomposers_set) = shanten::calculate(tehai)?;
         let mut conditions_vec = vec![];
         if decomposers_set.len() == 0 {
@@ -896,7 +896,7 @@ pub mod machi {
                 for decomposer in decomposers_set.iter() {
                     condition.handle(decomposer)?;
                 }
-                condition.finally_handle(tehai, yama)?;
+                condition.finally_handle(tehai, haiyama)?;
                 conditions_vec.push(condition);
             }
         }
@@ -1196,7 +1196,7 @@ pub mod machi {
         pub fn finally_handle(
             &mut self,
             tehai: &Tehai,
-            yama: Option<&Haiyama>,
+            haiyama: Option<&Game>,
         ) -> Result<&mut Self, String> {
             // Remove tiles whose valid number is 0.
             let check_count = |machihai: &mut BTreeMap<_, _>, item| {
@@ -1210,7 +1210,7 @@ pub mod machi {
             };
 
             // Not implement yet.
-            if let Some(_yama) = yama {}
+            if let Some(_haiyama) = haiyama {}
 
             let menzen_vec = tehai.menzen.as_ref()?;
             for item in menzen_vec.iter() {

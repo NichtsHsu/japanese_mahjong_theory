@@ -453,19 +453,23 @@ impl Tehai {
     }
 
     pub fn to_json(&self) -> serde_json::Value {
-        let menzen_vec = self.menzen.as_ref().unwrap();
-        let mut menzen_string_vec = vec![];
-        for hai in menzen_vec {
-            menzen_string_vec.push(hai.to_string());
+        match self.menzen.as_ref() {
+            Ok(menzen_vec) => {
+                let mut menzen_string_vec = vec![];
+                for hai in menzen_vec {
+                    menzen_string_vec.push(hai.to_string());
+                }
+                let mut fuuro_mentsu_json_vec = vec![];
+                for mentsu in &self.fuuro {
+                    fuuro_mentsu_json_vec.push(mentsu.to_json());
+                }
+                json!({
+                   "menzen": menzen_string_vec,
+                   "fuuro": fuuro_mentsu_json_vec
+                })
+            }
+            Err(error) => json!({ "error": error }),
         }
-        let mut fuuro_mentsu_json_vec = vec![];
-        for mentsu in &self.fuuro {
-            fuuro_mentsu_json_vec.push(mentsu.to_json());
-        }
-        json!({
-           "menzen": menzen_string_vec,
-           "fuuro": fuuro_mentsu_json_vec
-        })
     }
 }
 

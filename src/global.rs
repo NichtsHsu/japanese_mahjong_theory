@@ -32,6 +32,7 @@ pub enum InteractiveState {
     WaitForFirstInput,
     FullTiles,
     LackOneTile,
+    WaitForRinshanInput,
 }
 
 // Global variables

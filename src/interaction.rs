@@ -4,12 +4,12 @@ use serde_json::json;
 pub fn parse(arg: String) -> bool {
     let interactive = *global::INTERACTIVE.read().unwrap();
     match interactive {
-        global::InteractiveState::Noninteractive => noninteractive_parse(arg),
-        _ => interactive_parse(arg),
+        global::InteractiveState::Noninteractive => noninteractive_command_parse(arg),
+        _ => interactive_command_parse(arg),
     }
 }
 
-fn noninteractive_parse(arg: String) -> bool {
+fn noninteractive_command_parse(arg: String) -> bool {
     if arg == "interactive" || arg == "i" {
         // Make scope let interactive unlock its write lock.
         {
@@ -40,7 +40,7 @@ fn noninteractive_parse(arg: String) -> bool {
     }
 }
 
-fn interactive_parse(arg: String) -> bool {
+fn interactive_command_parse(arg: String) -> bool {
     if arg == "noninteractive" || arg == "ni" {
         // Make scope let players_number unlock its write lock.
         {
@@ -106,6 +106,7 @@ fn interactive_parse(arg: String) -> bool {
         }
         false
     } else {
+        interactive_input_analyze(arg);
         false
     }
 }
@@ -171,6 +172,10 @@ fn base_analyze(arg: String) {
             }
         ),
     }
+}
+
+fn interactive_input_analyze(arg: String) {
+
 }
 
 /// Check if input is 14 tiles.

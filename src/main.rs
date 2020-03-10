@@ -39,7 +39,7 @@ fn run() -> Result<(), String> {
             println!("Unable to read user input");
             continue;
         }
-        if interaction::parse(input.trim().to_string()) {
+        if interaction::command_parse(input.trim().to_string()) {
             break Ok(());
         }
     }

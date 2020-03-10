@@ -36,11 +36,12 @@ pub mod input {
         let mut on_mentsu = false;
 
         // Take tiles from stash(hai_stash) to output(menzen or mentsu_stash).
-        let push_into_hai_vec = |tile_type,
-                                 index,
-                                 stash: &mut Vec<char>,
-                                 output: &mut Vec<Hai>|
-         -> Result<(), String> {
+        fn push_into_hai_vec(
+            tile_type: char,
+            index: usize,
+            stash: &mut Vec<char>,
+            output: &mut Vec<Hai>,
+        ) -> Result<(), String> {
             if stash.len() == 0 {
                 Err(format!(
                     "Unused type character '{}' at index {}.",
@@ -141,6 +142,13 @@ pub mod input {
                     );
                 }
             }
+        }
+
+        if hai_stash.len() > 0 {
+            return Tehai::new(
+                Err(format!("No type specified for '{:?}' at the end of input string.", hai_stash)),
+                fuuro,
+            );
         }
 
         // Check if 3*k+2 tiles on menzen.
@@ -848,7 +856,7 @@ pub mod shanten {
 /// * machi: 待ち
 pub mod machi {
     use super::shanten::{self, Decomposer, Hourakei};
-    use crate::{mahjong::*,game::Game};
+    use crate::{game::Game, mahjong::*};
     use serde_json::json;
     use std::collections::{BTreeMap, HashSet};
 

@@ -45,7 +45,7 @@ impl Game {
         self
     }
 
-    pub fn tehai(&mut self) -> Option<&Tehai> {
+    pub fn tehai(&self) -> Option<&Tehai> {
         self.tehai.as_ref()
     }
     pub fn operate(&mut self, mut op: InteractiveOperation) -> Result<(), String> {
@@ -58,7 +58,6 @@ impl Game {
                 false
             }
         }
-        
         let mut state = global::INTERACTIVE.write().unwrap();
         let last_state = *state;
         match last_state {
@@ -68,6 +67,17 @@ impl Game {
             }
             global::InteractiveState::WaitForFirstInput => match &op {
                 InteractiveOperation::Initialize(tehai) => {
+                    let menzen_vec = tehai.menzen.as_ref()?;
+                    if tehai.fuuro.len() != 0 {
+                        return Err("Cannot initialized with fuuro(s).".to_string());
+                    }
+                    let backup = self.haiyama.clone();
+                    for hai in menzen_vec.iter() {
+                        if !haiyama_discard(&mut self.haiyama, hai) {
+                            self.haiyama = backup;
+                            return Err(format!("Cannot get fifth {}.", hai.to_string()));
+                        }
+                    }
                     self.tehai = Some(tehai.clone());
                     *state = global::InteractiveState::FullTiles;
                 }
@@ -220,7 +230,7 @@ impl Game {
                     return Err(format!(
                     "Only -, *-, *+ and >(kan) operations are supported at current state '{:?}'.",
                     last_state
-                ))
+                    ))
                 }
             },
             global::InteractiveState::LackOneTile => match &op.clone() {
@@ -243,7 +253,7 @@ impl Game {
                         let backup = self.haiyama.clone();
                         if !haiyama_discard(&mut self.haiyama, hai) {
                             self.haiyama = backup;
-                            return Err(format!("Cannot discard fifth {}.", hai.to_string()));
+                            return Err(format!("Cannot get fifth {}.", hai.to_string()));
                         }
                         if let Some(tehai) = self.tehai.as_mut() {
                             match tehai.menzen.as_mut() {
@@ -288,7 +298,7 @@ impl Game {
                         let backup = self.haiyama.clone();
                         if !haiyama_discard(&mut self.haiyama, hai) {
                             self.haiyama = backup;
-                            return Err(format!("Cannot discard fifth {}.", hai.to_string()));
+                            return Err(format!("Cannot get fifth {}.", hai.to_string()));
                         }
                         if let Some(tehai) = self.tehai.as_mut() {
                             match tehai.menzen.as_mut() {
@@ -341,7 +351,7 @@ impl Game {
                                         if !haiyama_discard(&mut self.haiyama, hai) {
                                             self.haiyama = backup;
                                             return Err(format!(
-                                                "Cannot discard fifth {}.",
+                                                "Cannot get fifth {}.",
                                                 hai.to_string()
                                             ));
                                         }
@@ -358,7 +368,7 @@ impl Game {
                                         op = InteractiveOperation::Daiminkan(*kantsu, *rinshan);
                                     } else {
                                         return Err(format!(
-                                            "Cannot discard fifth {}.",
+                                            "Cannot ger fifth {}.",
                                             hai.to_string()
                                         ));
                                     }
@@ -390,9 +400,69 @@ impl Game {
                         return Err("Logic error: Not a juntsu while must be juntsu.".to_string());
                     }
                 }
-                _ => (),
+                InteractiveOperation::Add(hai) => {
+                    let backup = self.haiyama.clone();
+                    if !haiyama_discard(&mut self.haiyama, hai) {
+                        self.haiyama = backup;
+                        return Err(format!("Cannot get fifth {}.", hai.to_string()));
+                    }
+                    if let Some(tehai) = self.tehai.as_mut() {
+                        match tehai.menzen.as_mut() {
+                            Ok(menzen_vec) => {
+                                menzen_vec.push(*hai);
+                                menzen_vec.sort();
+                            }
+                            Err(error) => return Err(error.clone()),
+                        }
+                        *state = global::InteractiveState::FullTiles;
+                    }
+                }
+                _ => {
+                    return Err(format!(
+                    "Only -, *-, *+ and >(kan) operations are supported at current state '{:?}'.",
+                    last_state
+                    ))
+                }
             },
-            global::InteractiveState::WaitForRinshanInput => {}
+            global::InteractiveState::WaitForRinshanInput => match &op {
+                InteractiveOperation::HaiyamaAdd(hai_vec) => {
+                    for hai in hai_vec {
+                        self.haiyama.insert(*hai, self.haiyama[hai] + 1);
+                    }
+                }
+                InteractiveOperation::HaiyamaDiscard(hai_vec) => {
+                    let backup = self.haiyama.clone();
+                    for hai in hai_vec {
+                        if !haiyama_discard(&mut self.haiyama, hai) {
+                            self.haiyama = backup;
+                            return Err(format!("Cannot discard fifth {}.", hai.to_string()));
+                        }
+                    }
+                }
+                InteractiveOperation::Add(hai) => {
+                    let backup = self.haiyama.clone();
+                    if !haiyama_discard(&mut self.haiyama, hai) {
+                        self.haiyama = backup;
+                        return Err(format!("Cannot get fifth {}.", hai.to_string()));
+                    }
+                    if let Some(tehai) = self.tehai.as_mut() {
+                        match tehai.menzen.as_mut() {
+                            Ok(menzen_vec) => {
+                                menzen_vec.push(*hai);
+                                menzen_vec.sort();
+                            }
+                            Err(error) => return Err(error.clone()),
+                        }
+                        *state = global::InteractiveState::FullTiles;
+                    }
+                }
+                _ => {
+                    return Err(format!(
+                    "Only +, *- and *+ operations are supported at current state '{:?}'.",
+                    last_state
+                    ))
+                }
+            },
         }
         self.operation_stack.push((op, last_state));
         Ok(())

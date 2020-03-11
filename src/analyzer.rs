@@ -146,7 +146,10 @@ pub mod input {
 
         if hai_stash.len() > 0 {
             return Tehai::new(
-                Err(format!("No type specified for '{:?}' at the end of input string.", hai_stash)),
+                Err(format!(
+                    "No type specified for '{:?}' at the end of input string.",
+                    hai_stash
+                )),
                 fuuro,
             );
         }
@@ -1204,42 +1207,52 @@ pub mod machi {
         pub fn finally_handle(
             &mut self,
             tehai: &Tehai,
-            haiyama: Option<&Game>,
+            game: Option<&Game>,
         ) -> Result<&mut Self, String> {
-            // Remove tiles whose valid number is 0.
-            let check_count = |machihai: &mut BTreeMap<_, _>, item| {
-                if machihai.contains_key(item) {
-                    if machihai[item] > 1 {
-                        machihai.insert(*item, machihai[item] - 1);
-                    } else if machihai[item] == 1 {
-                        machihai.remove(item);
+            // If interactive mode.
+            if let Some(game) = game {
+                let mut zero_nokori_tiles = vec![];
+                for (key, value) in self.machihai.iter_mut() {
+                    *value = game.haiyama()[key];
+                    if *value == 0 {
+                        zero_nokori_tiles.push(*key);
                     }
                 }
-            };
-
-            // Not implement yet.
-            if let Some(_haiyama) = haiyama {}
-
-            let menzen_vec = tehai.menzen.as_ref()?;
-            for item in menzen_vec.iter() {
-                check_count(&mut self.machihai, item);
-            }
-
-            for mentsu in tehai.fuuro.iter() {
-                match mentsu {
-                    Mentsu::Juntsu(a, b, c) => {
-                        check_count(&mut self.machihai, a);
-                        check_count(&mut self.machihai, b);
-                        check_count(&mut self.machihai, c);
-                    }
-                    Mentsu::Koutsu(item) => {
-                        for _ in 0..3 {
-                            check_count(&mut self.machihai, item);
+                for tile in zero_nokori_tiles {
+                    self.machihai.remove(&tile);
+                }
+            } else {
+                // Remove tiles whose valid number is 0.
+                let check_count = |machihai: &mut BTreeMap<_, _>, item| {
+                    if machihai.contains_key(item) {
+                        if machihai[item] > 1 {
+                            machihai.insert(*item, machihai[item] - 1);
+                        } else if machihai[item] == 1 {
+                            machihai.remove(item);
                         }
                     }
-                    Mentsu::Kantsu(item) => {
-                        for _ in 0..4 {
-                            check_count(&mut self.machihai, item);
+                };
+                let menzen_vec = tehai.menzen.as_ref()?;
+                for item in menzen_vec.iter() {
+                    check_count(&mut self.machihai, item);
+                }
+
+                for mentsu in tehai.fuuro.iter() {
+                    match mentsu {
+                        Mentsu::Juntsu(a, b, c) => {
+                            for item in vec![a, b, c] {
+                                check_count(&mut self.machihai, item);
+                            }
+                        }
+                        Mentsu::Koutsu(item) => {
+                            for _ in 0..3 {
+                                check_count(&mut self.machihai, item);
+                            }
+                        }
+                        Mentsu::Kantsu(item) => {
+                            for _ in 0..4 {
+                                check_count(&mut self.machihai, item);
+                            }
                         }
                     }
                 }

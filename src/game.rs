@@ -48,6 +48,11 @@ impl Game {
     pub fn tehai(&self) -> Option<&Tehai> {
         self.tehai.as_ref()
     }
+
+    pub fn haiyama(&self) -> &BTreeMap<Hai, u8> {
+        &self.haiyama
+    }
+
     pub fn operate(&mut self, mut op: InteractiveOperation) -> Result<(), String> {
         fn haiyama_discard(haiyama: &mut BTreeMap<Hai, u8>, hai: &Hai) -> bool {
             let count = haiyama[hai];
@@ -467,6 +472,7 @@ impl Game {
         self.operation_stack.push((op, last_state));
         Ok(())
     }
+
     pub fn back(&mut self) {
         if let Some((op, state)) = self.operation_stack.pop() {}
     }

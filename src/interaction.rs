@@ -278,10 +278,12 @@ fn interactive_command_parse(arg: String) -> bool {
                 }
             } else if arg.starts_with("*-") {
                 arg.remove(0);
+                arg.remove(0);
                 let hai_vec = simple_input_parse(arg)?;
                 let op = game::InteractiveOperation::HaiyamaDiscard(hai_vec);
                 game.operate(op)
             } else if arg.starts_with("*+") {
+                arg.remove(0);
                 arg.remove(0);
                 let hai_vec = simple_input_parse(arg)?;
                 let op = game::InteractiveOperation::HaiyamaAdd(hai_vec);
@@ -309,7 +311,7 @@ fn interactive_command_parse(arg: String) -> bool {
                 }
             }
         }(arg);
-        
+
         let output_format = *global::OUTPUT_FORMAT.read().unwrap();
         if let Err(error) = parse_result {
             match output_format {

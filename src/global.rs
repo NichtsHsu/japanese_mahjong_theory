@@ -1,7 +1,7 @@
 use lazy_static::lazy_static;
 pub use mut_static::MutStatic;
 
-use crate::game::Game;
+use crate::game;
 
 /// Players number.
 ///
@@ -40,7 +40,7 @@ lazy_static! {
     pub static ref PLAYERS_NUMBER: MutStatic<Players> = MutStatic::new();
     pub static ref OUTPUT_FORMAT: MutStatic<OutputFormat> = MutStatic::new();
     pub static ref INTERACTIVE: MutStatic<InteractiveState> = MutStatic::new();
-    pub static ref GAME: MutStatic<Game> = MutStatic::from(Game::new());
+    pub static ref GAME: MutStatic<game::Game> = MutStatic::from(game::Game::new());
 }
 
 impl ToString for Players {

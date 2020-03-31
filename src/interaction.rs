@@ -282,12 +282,6 @@ fn interactive_command_parse(arg: String) -> bool {
                 let hai_vec = simple_input_parse(arg)?;
                 let op = game::InteractiveOperation::HaiyamaDiscard(hai_vec);
                 game.operate(op)
-            } else if arg.starts_with("*+") {
-                arg.remove(0);
-                arg.remove(0);
-                let hai_vec = simple_input_parse(arg)?;
-                let op = game::InteractiveOperation::HaiyamaAdd(hai_vec);
-                game.operate(op)
             } else if arg.starts_with("*!-") {
                 Err("Not implement yet.".to_string())
             } else if arg.starts_with("*!+") {

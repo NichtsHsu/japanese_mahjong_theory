@@ -20,21 +20,21 @@ pub enum Mentsu {
 /// # Japanese
 /// * Taatsu: 搭子
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Taatsu(Hai, Hai);
+pub struct Taatsu(pub Hai, pub Hai);
 
 /// Two same hai.
 ///
 /// # Japanese
 /// * Toitsu: 対子
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Toitsu(Hai);
+pub struct Toitsu(pub Hai);
 
 /// An isolated hai.
 ///
 /// # Japanese
 /// * Ukihai: 浮き牌
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Ukihai(Hai);
+pub struct Ukihai(pub Hai);
 
 impl Mentsu {
     /// Create a mentsu from input vec of hai if they can make up a valid mentsu.

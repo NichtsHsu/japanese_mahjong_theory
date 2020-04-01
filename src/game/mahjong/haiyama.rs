@@ -1,10 +1,11 @@
 use super::{Hai, PlayerNumber};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, ops::Index};
 
 /// The haiyama struct.
-/// 
+///
 /// # Japanese
 /// * Haiyama: 牌山
+#[derive(Clone, Debug)]
 pub struct Haiyama {
     map: BTreeMap<Hai, u8>,
 }
@@ -17,6 +18,13 @@ impl Haiyama {
             map.insert(hai, 4);
         }
         Self { map }
+    }
+
+    pub fn reinitialize(&mut self, player_number: PlayerNumber) {
+        self.map.clear();
+        for hai in Hai::all_type(player_number) {
+            self.map.insert(hai, 4);
+        }
     }
 
     /// Add one hai to haiyama, limited to 4.
@@ -51,5 +59,13 @@ impl Haiyama {
     pub fn force_add(&mut self, hai: &Hai) {
         let number = self.map[hai];
         self.map.insert(*hai, number + 1);
+    }
+}
+
+impl<'a> Index<&'a Hai> for Haiyama {
+    type Output = <BTreeMap<Hai, u8> as Index<&'a Hai>>::Output;
+
+    fn index(&self, hai: &'a Hai) -> &Self::Output {
+        self.map.index(hai)
     }
 }

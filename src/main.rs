@@ -3,6 +3,7 @@
 #![warn(missing_docs)]
 
 mod game;
+mod interaction;
 
 fn main() {
 

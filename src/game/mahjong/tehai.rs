@@ -101,12 +101,6 @@ impl Tehai {
     /// let tehai = Tehai::new("45p8s144m[111z]25m44p3m".to_string(), PlayerNumber::Four);
     /// ```
     pub fn new(string: String, player_number: PlayerNumber) -> Result<Self, String> {
-        let mut juntehai = vec![];
-        let mut fuuro = vec![];
-        let mut char_stash: Vec<char> = vec![];
-        let mut hai_in_mentsu_stash: Vec<Hai> = vec![];
-        let mut in_mentsu = false;
-
         fn handle_char_stash(
             hai_type: char,
             hai_type_char_index: usize,
@@ -157,6 +151,12 @@ impl Tehai {
                 ))
             }
         }
+
+        let mut juntehai = vec![];
+        let mut fuuro = vec![];
+        let mut char_stash: Vec<char> = vec![];
+        let mut hai_in_mentsu_stash: Vec<Hai> = vec![];
+        let mut in_mentsu = false;
 
         for (index, chr) in string.chars().enumerate() {
             match chr {

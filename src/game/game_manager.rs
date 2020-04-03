@@ -67,9 +67,9 @@ pub enum HaiyamaOperation {
 #[derive(Clone, Debug)]
 pub enum TehaiOperation {
     Initialize(Tehai),
-    Add { hai: Hai, bound_check: bool },
+    Add { hai: Hai, haiyama_sensitive: bool },
     Discard(Hai),
-    Naku { kind: Naku, bound_check: bool },
+    Naku { kind: Naku, haiyama_sensitive: bool },
 }
 
 /// Valid operation for game manager.
@@ -77,7 +77,7 @@ pub enum TehaiOperation {
 pub enum Operation {
     Haiyama {
         kind: HaiyamaOperation,
-        bound_check: bool,
+        haiyama_sensitive: bool,
     },
     Tehai(TehaiOperation),
 }
@@ -178,20 +178,20 @@ impl GameManager {
             }
             Operation::Haiyama {
                 kind: HaiyamaOperation::Add(hai_vec),
-                bound_check,
+                haiyama_sensitive,
             } => {
-                if let Err(error) = self.haiyama.add_with_vec(hai_vec, *bound_check) {
-                    if *bound_check {
+                if let Err(error) = self.haiyama.add_with_vec(hai_vec, *haiyama_sensitive) {
+                    if *haiyama_sensitive {
                         return Err(error);
                     }
                 }
             }
             Operation::Haiyama {
                 kind: HaiyamaOperation::Discard(hai_vec),
-                bound_check,
+                haiyama_sensitive,
             } => {
-                if let Err(error) = self.haiyama.discard_with_vec(hai_vec, *bound_check) {
-                    if *bound_check {
+                if let Err(error) = self.haiyama.discard_with_vec(hai_vec, *haiyama_sensitive) {
+                    if *haiyama_sensitive {
                         return Err(error);
                     }
                 }
@@ -215,14 +215,14 @@ impl GameManager {
             }
             Operation::Tehai(TehaiOperation::Naku {
                 kind: Naku::Kan(Kan::Unknown { kantsu, rinshanhai }),
-                bound_check,
+                haiyama_sensitive,
             }) => {
                 let haiyama_backup = self.haiyama.clone();
                 let state_backup = self.state;
                 let tehai_backup = self.tehai.clone();
                 if let Some(rinshanhai) = rinshanhai {
                     if let Err(error) = self.haiyama.discard(rinshanhai) {
-                        if *bound_check {
+                        if *haiyama_sensitive {
                             return Err(error);
                         }
                     }
@@ -236,7 +236,7 @@ impl GameManager {
                         if let Kan::Ankan { .. } | Kan::Kakan { .. } = &kan {
                             *op = Operation::Tehai(TehaiOperation::Naku {
                                 kind: Naku::Kan(kan),
-                                bound_check: *bound_check,
+                                haiyama_sensitive: *haiyama_sensitive,
                             })
                         } else {
                             self.haiyama = haiyama_backup;
@@ -256,20 +256,20 @@ impl GameManager {
             }
             Operation::Haiyama {
                 kind: HaiyamaOperation::Add(hai_vec),
-                bound_check,
+                haiyama_sensitive,
             } => {
-                if let Err(error) = self.haiyama.add_with_vec(hai_vec, *bound_check) {
-                    if *bound_check {
+                if let Err(error) = self.haiyama.add_with_vec(hai_vec, *haiyama_sensitive) {
+                    if *haiyama_sensitive {
                         return Err(error);
                     }
                 }
             }
             Operation::Haiyama {
                 kind: HaiyamaOperation::Discard(hai_vec),
-                bound_check,
+                haiyama_sensitive,
             } => {
-                if let Err(error) = self.haiyama.discard_with_vec(hai_vec, *bound_check) {
-                    if *bound_check {
+                if let Err(error) = self.haiyama.discard_with_vec(hai_vec, *haiyama_sensitive) {
+                    if *haiyama_sensitive {
                         return Err(error);
                     }
                 }
@@ -287,9 +287,12 @@ impl GameManager {
 
     fn operate_lack_one_hai(&mut self, op: &mut Operation) -> Result<(), String> {
         match &*op {
-            Operation::Tehai(TehaiOperation::Add { hai, bound_check }) => {
+            Operation::Tehai(TehaiOperation::Add {
+                hai,
+                haiyama_sensitive,
+            }) => {
                 if let Err(error) = self.haiyama.discard(hai) {
-                    if *bound_check {
+                    if *haiyama_sensitive {
                         return Err(error);
                     }
                 }
@@ -299,11 +302,11 @@ impl GameManager {
             }
             Operation::Tehai(TehaiOperation::Naku {
                 kind: Naku::Chii { juntsu, nakihai },
-                bound_check,
+                haiyama_sensitive,
             }) => {
                 let haiyama_backup = self.haiyama.clone();
                 if let Err(error) = self.haiyama.discard(nakihai) {
-                    if *bound_check {
+                    if *haiyama_sensitive {
                         return Err(error);
                     }
                 }
@@ -315,11 +318,11 @@ impl GameManager {
             }
             Operation::Tehai(TehaiOperation::Naku {
                 kind: Naku::Pon(koutsu @ Mentsu::Koutsu(hai)),
-                bound_check,
+                haiyama_sensitive,
             }) => {
                 let haiyama_backup = self.haiyama.clone();
                 if let Err(error) = self.haiyama.discard(hai) {
-                    if *bound_check {
+                    if *haiyama_sensitive {
                         return Err(error);
                     }
                 }
@@ -335,19 +338,19 @@ impl GameManager {
                         kantsu: kantsu @ Mentsu::Kantsu(hai),
                         rinshanhai,
                     }),
-                bound_check,
+                haiyama_sensitive,
             }) => {
                 let haiyama_backup = self.haiyama.clone();
                 let state_backup = self.state;
                 let tehai_backup = self.tehai.clone();
                 if let Err(error) = self.haiyama.discard(hai) {
-                    if *bound_check {
+                    if *haiyama_sensitive {
                         return Err(error);
                     }
                 }
                 if let Some(rinshanhai) = rinshanhai {
                     if let Err(error) = self.haiyama.discard(rinshanhai) {
-                        if *bound_check {
+                        if *haiyama_sensitive {
                             self.haiyama = haiyama_backup;
                             return Err(error);
                         }
@@ -362,7 +365,7 @@ impl GameManager {
                         if let Kan::Daiminkan { .. } = &kan {
                             *op = Operation::Tehai(TehaiOperation::Naku {
                                 kind: Naku::Kan(kan),
-                                bound_check: *bound_check,
+                                haiyama_sensitive: *haiyama_sensitive,
                             })
                         } else {
                             self.haiyama = haiyama_backup;
@@ -382,20 +385,20 @@ impl GameManager {
             }
             Operation::Haiyama {
                 kind: HaiyamaOperation::Add(hai_vec),
-                bound_check,
+                haiyama_sensitive,
             } => {
-                if let Err(error) = self.haiyama.add_with_vec(hai_vec, *bound_check) {
-                    if *bound_check {
+                if let Err(error) = self.haiyama.add_with_vec(hai_vec, *haiyama_sensitive) {
+                    if *haiyama_sensitive {
                         return Err(error);
                     }
                 }
             }
             Operation::Haiyama {
                 kind: HaiyamaOperation::Discard(hai_vec),
-                bound_check,
+                haiyama_sensitive,
             } => {
-                if let Err(error) = self.haiyama.discard_with_vec(hai_vec, *bound_check) {
-                    if *bound_check {
+                if let Err(error) = self.haiyama.discard_with_vec(hai_vec, *haiyama_sensitive) {
+                    if *haiyama_sensitive {
                         return Err(error);
                     }
                 }
@@ -413,9 +416,12 @@ impl GameManager {
 
     fn operate_wait_for_rinshanhai(&mut self, op: &Operation) -> Result<(), String> {
         match op {
-            Operation::Tehai(TehaiOperation::Add { hai, bound_check }) => {
+            Operation::Tehai(TehaiOperation::Add {
+                hai,
+                haiyama_sensitive,
+            }) => {
                 if let Err(error) = self.haiyama.discard(hai) {
-                    if *bound_check {
+                    if *haiyama_sensitive {
                         return Err(error);
                     }
                 }
@@ -425,20 +431,20 @@ impl GameManager {
             }
             Operation::Haiyama {
                 kind: HaiyamaOperation::Add(hai_vec),
-                bound_check,
+                haiyama_sensitive,
             } => {
-                if let Err(error) = self.haiyama.add_with_vec(hai_vec, *bound_check) {
-                    if *bound_check {
+                if let Err(error) = self.haiyama.add_with_vec(hai_vec, *haiyama_sensitive) {
+                    if *haiyama_sensitive {
                         return Err(error);
                     }
                 }
             }
             Operation::Haiyama {
                 kind: HaiyamaOperation::Discard(hai_vec),
-                bound_check,
+                haiyama_sensitive,
             } => {
-                if let Err(error) = self.haiyama.discard_with_vec(hai_vec, *bound_check) {
-                    if *bound_check {
+                if let Err(error) = self.haiyama.discard_with_vec(hai_vec, *haiyama_sensitive) {
+                    if *haiyama_sensitive {
                         return Err(error);
                     }
                 }

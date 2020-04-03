@@ -24,6 +24,61 @@ pub enum Hai {
 }
 
 impl Hai {
+    /// Parse string to a vec of hai. Order of hai is equal with input string.
+    pub fn from_string_unordered(string: &String, player_number: PlayerNumber) -> Result<Vec<Hai>, String> {
+        fn handle_char_stash(
+            hai_type: char,
+            hai_type_char_index: usize,
+            player_number: PlayerNumber,
+            char_stash: &mut Vec<char>,
+            output: &mut Vec<Hai>,
+        ) -> Result<(), String> {
+            if char_stash.len() == 0 {
+                Err(format!(
+                    "Unused type character '{}' at index {}.",
+                    hai_type, hai_type_char_index
+                ))
+            } else {
+                for hai in char_stash.iter() {
+                    let hai = match hai_type {
+                        'm' => Hai::Manzu(*hai as u8 - 48),
+                        'p' => Hai::Pinzu(*hai as u8 - 48),
+                        's' => Hai::Souzu(*hai as u8 - 48),
+                        'z' => Hai::Jihai(*hai as u8 - 48),
+                        _ => Hai::Manzu(0), // Never reach here.
+                    };
+                    if hai.is_valid(player_number) {
+                        output.push(hai);
+                    } else {
+                        char_stash.clear();
+                        return Err(format!("'{}' is invalid hai.", hai.to_string()));
+                    }
+                }
+                char_stash.clear();
+                Ok(())
+            }
+        }
+
+        let mut char_stash: Vec<char> = vec![];
+        let mut hai_vec = vec![];
+        
+        for (index, chr) in string.chars().enumerate() {
+            match chr {
+                'm' | 'p' | 's' | 'z' => {
+                    handle_char_stash(chr, index, player_number, &mut char_stash, &mut hai_vec)?;
+                }
+                '1'..='9' => char_stash.push(chr),
+                // Ignore all spaces.
+                ' ' => (),
+                _ => {
+                    return Err(format!("Unknown character '{}' at index {}.", chr, index));
+                }
+            }
+        }
+
+        Ok(hai_vec)
+    }
+
     /// Return if valid -- it means 1\~9m, 1\~9p, 1\~9s, 1\~7z on 4-players mode
     /// and 1m, 9m, 1\~9p, 1\~9s, 1\~7z on 3-players mode.
     pub fn is_valid(&self, player_number: PlayerNumber) -> bool {

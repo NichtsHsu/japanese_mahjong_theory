@@ -1,4 +1,4 @@
-use super::{GameManager, Hai, Mentsu, PlayerNumber, Taatsu, Toitsu, Ukihai};
+use super::{GameManager, Hai, Kan, Mentsu, PlayerNumber, Taatsu, Toitsu, Ukihai};
 use serde_json::json;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -234,27 +234,6 @@ impl Tehai {
         }
     }
 
-    /// Print self to json.
-    pub fn to_json(&self) -> serde_json::Value {
-        let mut juntehai_string_vec = vec![];
-        for hai in &self.juntehai {
-            juntehai_string_vec.push(hai.to_string());
-        }
-        let mut fuuro_json_vec = vec![];
-        for mentsu in &self.fuuro {
-            fuuro_json_vec.push(mentsu.to_json());
-        }
-        json!({
-           "juntehai": juntehai_string_vec,
-           "fuuro": fuuro_json_vec
-        })
-    }
-
-    /// Return number of juntehai.
-    pub fn juntehai_number(&self) -> usize {
-        self.juntehai.len()
-    }
-
     /// Analyze conditions of sutehai and machihai.
     ///
     /// # Return
@@ -294,7 +273,7 @@ impl Tehai {
         for sutehai in sutehai_set {
             let mut condition = MachiCondition::new(sutehai);
             for decomposer in &decomposers {
-                condition.handle(decomposer, self.juntehai_number(), player_number)?;
+                condition.handle(decomposer, self.juntehai.len(), player_number)?;
             }
             condition.finally(self, game_manager);
             conditions_vec.push(condition);
@@ -312,6 +291,152 @@ impl Tehai {
         Ok((shanten, conditions_vec))
     }
 
+    /// Discard a hai from juntehai.
+    pub fn discard(&mut self, hai: &Hai) -> Result<(), String> {
+        let mut index = None;
+        for (i, item) in self.juntehai.iter().enumerate() {
+            if item == hai {
+                index = Some(i);
+                break;
+            }
+        }
+        match index {
+            Some(index) => {
+                self.juntehai.remove(index);
+                Ok(())
+            }
+            None => return Err(format!("No enough {} to discard.", hai.to_string())),
+        }
+    }
+
+    /// Chii, for an example, 23m catch 4m.
+    pub fn chii(&mut self, juntsu: &Mentsu, nakihai: &Hai) -> Result<(), String> {
+        if let Mentsu::Juntsu(a, b, c) = juntsu {
+            let backup = self.clone();
+            for hai in vec![a, b, c] {
+                if hai == nakihai {
+                    continue;
+                }
+                if let Err(error) = self.discard(hai) {
+                    *self = backup;
+                    return Err(error);
+                }
+            }
+            self.fuuro.push(*juntsu);
+            Ok(())
+        } else {
+            Err("Logic error: Tehai::chii() can only accept Mentsu::Juntsu.".to_string())
+        }
+    }
+
+    /// Pon, for an example, 22m catch 2m.
+    pub fn pon(&mut self, koutsu: &Mentsu) -> Result<(), String> {
+        if let Mentsu::Koutsu(hai) = koutsu {
+            let backup = self.clone();
+            for _ in 0..2 {
+                if let Err(error) = self.discard(hai) {
+                    *self = backup;
+                    return Err(error);
+                }
+            }
+            self.fuuro.push(*koutsu);
+            Ok(())
+        } else {
+            Err("Logic error: Tehai::pon() can only accept Mentsu::Koutsu.".to_string())
+        }
+    }
+
+    /// Kan, for an example, 222m catch 2m.
+    pub fn kan(&mut self, kantsu: &Mentsu, rinshanhai: &Option<Hai>) -> Result<Kan, String> {
+        if let Mentsu::Kantsu(hai) = kantsu {
+            let mut hai_num = 0;
+            let mut exist_koutsu = false;
+            let mut exist_koutsu_index = 0;
+            for i in &self.juntehai {
+                if i == hai {
+                    hai_num += 1;
+                }
+            }
+            for (index, mentsu) in self.fuuro.iter().enumerate() {
+                if let Mentsu::Kantsu(i) = mentsu {
+                    if i == hai {
+                        exist_koutsu = true;
+                        exist_koutsu_index = index;
+                        break;
+                    }
+                }
+            }
+            let kan;
+            // Kakan or Ankan
+            if self.juntehai.len() % 3 == 2 {
+                if hai_num == 1 && exist_koutsu {
+                    // Undoubtedly exist. Ignore the error.
+                    self.discard(hai)?;
+                    self.fuuro[exist_koutsu_index] = *kantsu;
+                    kan = Kan::Kakan {
+                        kantsu: *kantsu,
+                        rinshanhai: *rinshanhai,
+                    }
+                } else if hai_num == 4 && !exist_koutsu {
+                    for _ in 0..4 {
+                        // Undoubtedly exist. Ignore the error.
+                        self.discard(hai)?;
+                    }
+                    self.fuuro.push(kantsu.clone());
+                    kan = Kan::Ankan {
+                        kantsu: *kantsu,
+                        rinshanhai: rinshanhai.clone(),
+                    }
+                } else {
+                    return Err("Logic error: Tehai currently is not able to kan.".to_string());
+                }
+            }
+            // Daiminkan
+            else if self.juntehai.len() % 3 == 1 {
+                if hai_num == 3 && !exist_koutsu {
+                    for _ in 0..3 {
+                        // Undoubtedly exist. Ignore the error.
+                        self.discard(hai)?;
+                    }
+                    self.fuuro.push(kantsu.clone());
+                    kan = Kan::Daiminkan {
+                        kantsu: *kantsu,
+                        rinshanhai: rinshanhai.clone(),
+                    }
+                } else {
+                    return Err("Logic error: Tehai currently is not able to kan.".to_string());
+                }
+            } else {
+                return Err("Logic error: Tehai currently is not able to kan.".to_string());
+            }
+
+            // Deal with rinshanhai
+            if let Some(rinshanhai) = rinshanhai {
+                self.juntehai.push(*rinshanhai);
+                self.juntehai.sort();
+            }
+            Ok(kan)
+        } else {
+            Err("Logic error: Tehai::kan() can only accept Mentsu::Kantsu.".to_string())
+        }
+    }
+
+    /// Print self to json.
+    pub fn to_json(&self) -> serde_json::Value {
+        let mut juntehai_string_vec = vec![];
+        for hai in &self.juntehai {
+            juntehai_string_vec.push(hai.to_string());
+        }
+        let mut fuuro_json_vec = vec![];
+        for mentsu in &self.fuuro {
+            fuuro_json_vec.push(mentsu.to_json());
+        }
+        json!({
+           "juntehai": juntehai_string_vec,
+           "fuuro": fuuro_json_vec
+        })
+    }
+
     /// Decompose self to a vec of Decomposer.
     ///
     /// # Return
@@ -319,22 +444,22 @@ impl Tehai {
     /// * The `HashSet<Decomposer>` data is all decomposers that thier shanten are minimum one.
     fn decompose(&self, player_number: PlayerNumber) -> Result<(i32, HashSet<Decomposer>), String> {
         // Only work for 3*k+2 juntehai.
-        if self.juntehai_number() % 3 != 2 {
+        if self.juntehai.len() % 3 != 2 {
             return Err(format!(
                 "The number of hai on hand must be 3*k+2, \
                 such as 8, 11, 14, even 17, but {} provided.",
-                self.juntehai_number()
+                self.juntehai.len()
             ));
         }
 
-        let mut min_shanten = ((self.juntehai_number() / 3) * 2) as i32;
+        let mut min_shanten = ((self.juntehai.len() / 3) * 2) as i32;
         let mut min_shanten_decomposers = HashSet::new();
 
         let mut push_into_decomposers = |decomposer: Decomposer| {
-            if decomposer.shanten(self.juntehai_number()) == min_shanten {
+            if decomposer.shanten(self.juntehai.len()) == min_shanten {
                 min_shanten_decomposers.insert(decomposer);
-            } else if decomposer.shanten(self.juntehai_number()) < min_shanten {
-                min_shanten = decomposer.shanten(self.juntehai_number());
+            } else if decomposer.shanten(self.juntehai.len()) < min_shanten {
+                min_shanten = decomposer.shanten(self.juntehai.len());
                 min_shanten_decomposers.clear();
                 min_shanten_decomposers.insert(decomposer);
             }
@@ -349,7 +474,7 @@ impl Tehai {
         }
 
         // Analyze Chiitoitsu and Kokushimusou.
-        if self.juntehai_number() != 14 || self.fuuro.len() != 0 {
+        if self.juntehai.len() != 14 || self.fuuro.len() != 0 {
             return Ok((min_shanten, min_shanten_decomposers));
         }
 
@@ -564,13 +689,13 @@ impl Tehai {
             tehai.split(decomposers_vec, decomposer, player_number);
         }
 
-        if self.juntehai_number() == 1 {
+        if self.juntehai.len() == 1 {
             decomposer.invalid_ukihai_vec.push(Ukihai {
                 0: self.juntehai[0],
             });
         }
 
-        if self.juntehai_number() <= 1 {
+        if self.juntehai.len() <= 1 {
             decomposers_vec.push(decomposer.clone());
             return;
         }

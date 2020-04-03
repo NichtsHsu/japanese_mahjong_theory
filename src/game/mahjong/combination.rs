@@ -126,39 +126,43 @@ impl Mentsu {
     }
 }
 
-impl ToString for Mentsu {
-    fn to_string(&self) -> String {
-        match self {
-            Mentsu::Juntsu(a, b, c) => {
-                format!("[{}{}{}]", a.to_string(), b.to_string(), c.to_string())
+impl std::fmt::Display for Mentsu {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Mentsu::Juntsu(a, b, c) => {
+                    format!("[{}{}{}]", a.to_string(), b.to_string(), c.to_string())
+                }
+                Mentsu::Koutsu(a) => {
+                    let tile = a.to_string();
+                    format!("[{}{}{}]", tile, tile, tile)
+                }
+                Mentsu::Kantsu(a) => {
+                    let tile = a.to_string();
+                    format!("[{}{}{}{}]", tile, tile, tile, tile)
+                }
             }
-            Mentsu::Koutsu(a) => {
-                let tile = a.to_string();
-                format!("[{}{}{}]", tile, tile, tile)
-            }
-            Mentsu::Kantsu(a) => {
-                let tile = a.to_string();
-                format!("[{}{}{}{}]", tile, tile, tile, tile)
-            }
-        }
+        )
     }
 }
 
-impl ToString for Taatsu {
-    fn to_string(&self) -> String {
-        format!("{}{}", self.0.to_string(), self.1.to_string())
+impl std::fmt::Display for Taatsu {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}{}", self.0.to_string(), self.1.to_string())
     }
 }
 
-impl ToString for Toitsu {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for Toitsu {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let tile = self.0.to_string();
-        format!("{}{}", tile, tile)
+        write!(f, "{}{}", tile, tile)
     }
 }
 
-impl ToString for Ukihai {
-    fn to_string(&self) -> String {
-        self.0.to_string()
+impl std::fmt::Display for Ukihai {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }

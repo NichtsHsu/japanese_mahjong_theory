@@ -248,13 +248,17 @@ impl Hai {
     }
 }
 
-impl ToString for Hai {
-    fn to_string(&self) -> String {
-        match self {
-            Hai::Manzu(num) => format!("{}m", num),
-            Hai::Pinzu(num) => format!("{}p", num),
-            Hai::Souzu(num) => format!("{}s", num),
-            Hai::Jihai(num) => format!("{}z", num),
-        }
+impl std::fmt::Display for Hai {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Hai::Manzu(num) => format!("{}m", num),
+                Hai::Pinzu(num) => format!("{}p", num),
+                Hai::Souzu(num) => format!("{}s", num),
+                Hai::Jihai(num) => format!("{}z", num),
+            }
+        )
     }
 }

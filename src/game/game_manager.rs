@@ -103,6 +103,11 @@ impl GameManager {
         }
     }
 
+    pub fn reinitialize(&mut self, player_number: PlayerNumber) -> &mut Self {
+        *self = Self::new(player_number);
+        self
+    }
+
     /// Return a reference of haiyama
     pub fn haiyama(&self) -> &Haiyama {
         &self.haiyama

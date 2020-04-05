@@ -855,7 +855,7 @@ impl Decomposer {
                 13 - 2 * self.toitsu_vec.len() as i32
                     - std::cmp::min(self.valid_ukihai_vec.len(), 7 - self.toitsu_vec.len()) as i32
             }
-            Hourakei::Kokushimusou => 13 - self.invalid_ukihai_vec.len() as i32,
+            Hourakei::Kokushimusou => 13 - self.valid_ukihai_vec.len() as i32,
         }
     }
 }

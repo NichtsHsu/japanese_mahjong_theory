@@ -1,3 +1,5 @@
 mod command;
+mod controller;
 
-pub use command::Command;
+use command::Command;
+pub use controller::{Controller, OutputFormat};

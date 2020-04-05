@@ -6,11 +6,15 @@ pub enum PlayerNumber {
     Four,
 }
 
-impl ToString for PlayerNumber {
-    fn to_string(&self) -> String {
-        match self {
-            Three => "3".to_string(),
-            Four => "4".to_string(),
-        }
+impl std::fmt::Display for PlayerNumber {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Three => "3".to_string(),
+                Four => "4".to_string(),
+            }
+        )
     }
 }

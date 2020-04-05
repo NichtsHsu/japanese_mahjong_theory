@@ -21,14 +21,6 @@ impl Haiyama {
         Self { map }
     }
 
-    /// Reinitialize haiyama.
-    pub fn reinitialize(&mut self, player_number: PlayerNumber) {
-        self.map.clear();
-        for hai in Hai::all_type(player_number) {
-            self.map.insert(hai, 4);
-        }
-    }
-
     /// Add one hai to haiyama, limited to 4.
     pub fn add(&mut self, hai: &Hai) -> Result<(), String> {
         let number = self.map[hai];

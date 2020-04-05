@@ -1,8 +1,10 @@
+use super::OutputFormat;
 use crate::game;
 
 pub enum Command {
     Interactive,
     Noninteractive,
+    OutputFormat(OutputFormat),
     PlayerNumber(game::PlayerNumber),
     TehaiInput(game::Tehai),
     GameOperation(game::Operation),
@@ -24,6 +26,8 @@ impl Command {
             "b!" | "back!" => Ok(Command::Back {
                 haiyama_sensitive: false,
             }),
+            "std" | "standard" => Ok(Command::OutputFormat(OutputFormat::Standard)),
+            "json" => Ok(Command::OutputFormat(OutputFormat::Json)),
             _ => Command::parse_with_argument(command, player_number),
         }
     }

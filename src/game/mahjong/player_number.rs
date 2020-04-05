@@ -12,8 +12,8 @@ impl std::fmt::Display for PlayerNumber {
             f,
             "{}",
             match self {
-                Three => "3".to_string(),
-                Four => "4".to_string(),
+                PlayerNumber::Three => "3".to_string(),
+                PlayerNumber::Four => "4".to_string(),
             }
         )
     }

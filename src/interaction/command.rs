@@ -26,6 +26,8 @@ impl Command {
             "b!" | "back!" => Ok(Command::Back {
                 haiyama_sensitive: false,
             }),
+            "3pl" | "3-player" => Ok(Command::PlayerNumber(game::PlayerNumber::Three)),
+            "4pl" | "4-player" => Ok(Command::PlayerNumber(game::PlayerNumber::Four)),
             "std" | "standard" => Ok(Command::OutputFormat(OutputFormat::Standard)),
             "json" => Ok(Command::OutputFormat(OutputFormat::Json)),
             _ => Command::parse_with_argument(command, player_number),

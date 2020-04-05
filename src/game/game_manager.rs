@@ -1,4 +1,4 @@
-use super::{Hai, Haiyama, Mentsu, PlayerNumber, Tehai};
+use super::{Hai, Haiyama, MachiCondition, Mentsu, PlayerNumber, Tehai};
 use serde_json::json;
 use std::collections::BTreeSet;
 
@@ -10,6 +10,7 @@ pub struct GameManager {
     tehai: Option<Tehai>,
     sutehai_type: BTreeSet<Hai>,
     pub state: State,
+    player_number: PlayerNumber,
     history: Vec<(Operation, State)>,
 }
 
@@ -99,6 +100,7 @@ impl GameManager {
             tehai: None,
             sutehai_type: BTreeSet::new(),
             state: State::WaitToInit,
+            player_number,
             history: vec![],
         }
     }
@@ -120,6 +122,18 @@ impl GameManager {
 
     pub fn history(&self) -> &Vec<(Operation, State)> {
         &self.history
+    }
+
+    pub fn tehai(&self) -> Option<&Tehai> {
+        return self.tehai.as_ref();
+    }
+
+    pub fn tehai_analyze(&self) -> Result<(i32, Vec<MachiCondition>), String> {
+        if let Some(tehai) = &self.tehai {
+            tehai.analyze(self.player_number, Some(&self))
+        } else {
+            Err("Not initialized.".to_string())
+        }
     }
 
     /// Main function to control the game.
@@ -173,11 +187,12 @@ impl GameManager {
                 self_.state = State::WaitToInit;
                 return Err(error);
             }
+            self_.tehai = Some(tehai.clone());
 
             Ok(())
         }
 
-        match &op {
+        match op {
             Operation::Tehai(TehaiOperation::Initialize(tehai)) => {
                 operate_tehai_init(self, tehai)?;
             }

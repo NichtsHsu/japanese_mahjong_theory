@@ -30,10 +30,6 @@ impl Controller {
         }
     }
 
-    pub fn player_number(&self) -> game::PlayerNumber {
-        self.player_number
-    }
-
     pub fn output_format(&self) -> OutputFormat {
         self.output_format
     }
@@ -41,28 +37,38 @@ impl Controller {
     pub fn execute(&mut self, command: String, exit: &mut bool) {
         let result = self.execute_core(command, exit);
 
-        if !*exit {
-            if let OutputFormat::Standard = self.output_format {
-                println!(
-                    "<<< [{},{}]",
-                    self.player_number,
-                    match &self.game_manager {
-                        Some(_) => "I",
-                        None => "NI",
-                    }
-                )
-            }
-        }
-
         match result {
-            Ok(Some(output)) => println!("{}", output),
+            Ok(Some(output)) => {
+                if !*exit {
+                    if let OutputFormat::Standard = self.output_format {
+                        println!(
+                            "<<< [{},{}]",
+                            self.player_number,
+                            match &self.game_manager {
+                                Some(_) => "I",
+                                None => "NI",
+                            }
+                        )
+                    }
+                }
+                println!("{}", output);
+            }
             Err(error) => match self.output_format {
-                OutputFormat::Standard => println!("{}", error),
+                OutputFormat::Standard => {
+                    println!(
+                        "<<< [{},{}]",
+                        self.player_number,
+                        match &self.game_manager {
+                            Some(_) => "I",
+                            None => "NI",
+                        }
+                    );
+                    println!("{}", error);
+                }
                 OutputFormat::Json => println!("{}", json!({ "error": error })),
             },
             _ => (),
         }
-
         if !*exit {
             if let OutputFormat::Standard = self.output_format {
                 print!(">>> ");
@@ -124,9 +130,26 @@ impl Controller {
                 self.game_manager = Some(game::GameManager::new(self.player_number))
             }
             Command::OutputFormat(output_format) => self.output_format = output_format,
-            Command::PlayerNumber(player_number) => self.player_number = player_number,
+            Command::PlayerNumber(player_number) => {
+                self.player_number = player_number;
+                if let Some(game_manager) = &mut self.game_manager {
+                    game_manager.reinitialize(player_number);
+                }
+            }
             Command::GameOperation(op) => match &mut self.game_manager {
-                Some(game_manager) => game_manager.operate(op)?,
+                Some(game_manager) => {
+                    game_manager.operate(op)?;
+                    if let game::State::FullHai = game_manager.state {
+                        let tehai = game_manager.tehai().ok_or("Not initialized.".to_string())?;
+                        let (shanten, conditions) = game_manager.tehai_analyze()?;
+                        return Ok(Some(print_machi(
+                            &tehai,
+                            shanten,
+                            conditions,
+                            self.output_format,
+                        )));
+                    }
+                }
                 None => {
                     return Err(
                         "Can not execute interactive command at non-interactive mode.".to_string(),
@@ -134,9 +157,21 @@ impl Controller {
                 }
             },
             Command::TehaiInput(tehai) => match &mut self.game_manager {
-                Some(game_manager) => game_manager.operate(game::Operation::Tehai(
-                    game::TehaiOperation::Initialize(tehai),
-                ))?,
+                Some(game_manager) => {
+                    game_manager.operate(game::Operation::Tehai(
+                        game::TehaiOperation::Initialize(tehai),
+                    ))?;
+                    if let game::State::FullHai = game_manager.state {
+                        let tehai = game_manager.tehai().ok_or("Not initialized.".to_string())?;
+                        let (shanten, conditions) = game_manager.tehai_analyze()?;
+                        return Ok(Some(print_machi(
+                            &tehai,
+                            shanten,
+                            conditions,
+                            self.output_format,
+                        )));
+                    }
+                }
                 None => {
                     let (shanten, conditions) = tehai.analyze(self.player_number, None)?;
                     return Ok(Some(print_machi(

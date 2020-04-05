@@ -47,14 +47,11 @@ impl Haiyama {
             BTreeMap::new()
         };
         for hai in hai_vec {
-            if let Err(_) = self.add(hai) {
+            if let Err(error) = self.add(hai) {
                 if auto_restore {
                     self.map = backup;
                 }
-                return Err(format!(
-                    "Not enough '{}' in haiyama to discard.",
-                    hai.to_string()
-                ));
+                return Err(error);
             }
         }
         Ok(())

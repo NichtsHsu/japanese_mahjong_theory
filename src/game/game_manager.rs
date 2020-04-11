@@ -92,6 +92,126 @@ pub enum State {
     WaitForRinshanhai,
 }
 
+impl Kan {
+    pub fn to_json(&self) -> serde_json::Value {
+        let (tp, kantsu, rinshanhai) = match self {
+            Kan::Daiminkan { kantsu, rinshanhai } => ("daiminkan", kantsu, rinshanhai),
+            Kan::Kakan { kantsu, rinshanhai } => ("kakan", kantsu, rinshanhai),
+            Kan::Ankan { kantsu, rinshanhai } => ("ankan", kantsu, rinshanhai),
+            Kan::Unknown { kantsu, rinshanhai } => ("unknown", kantsu, rinshanhai),
+        };
+        match rinshanhai {
+            Some(hai) => json!({
+                "type": tp,
+                "kantsu": kantsu.to_json(),
+                "rinshanhai": hai.to_string()
+            }),
+            None => json!({
+                "type": tp,
+                "kantsu": kantsu.to_json(),
+                "rinshanhai": null
+            }),
+        }
+    }
+}
+
+impl Naku {
+    pub fn to_json(&self) -> serde_json::Value {
+        match self {
+            Naku::Chii { juntsu, nakihai } => json!({
+                "type": "chii",
+                "juntsu": juntsu.to_json(),
+                "nakihai": nakihai.to_string(),
+            }),
+            Naku::Pon(koutsu) => json!({
+                "type": "pon",
+                "koutsu": koutsu.to_json(),
+            }),
+            Naku::Kan(kan) => json!({
+                "type": "kan",
+                "kan": kan.to_json(),
+            }),
+        }
+    }
+}
+
+impl TehaiOperation {
+    pub fn to_json(&self) -> serde_json::Value {
+        match self {
+            TehaiOperation::Initialize(tehai) => json!({
+                "operation": "initialze",
+                "tehai": tehai.to_json(),
+            }),
+            TehaiOperation::Add {
+                hai,
+                haiyama_sensitive,
+            } => json!({
+                "operation": "add",
+                "hai": hai.to_string(),
+                "haiyama_sensitive": haiyama_sensitive,
+            }),
+            TehaiOperation::Discard(hai) => json!({
+                "operation": "discard",
+                "hai": hai.to_string(),
+            }),
+            TehaiOperation::Naku {
+                kind,
+                haiyama_sensitive,
+            } => json!({
+                "operation": "naku",
+                "naku": kind.to_json(),
+                "haiyama_sensitive": haiyama_sensitive,
+            }),
+        }
+    }
+}
+
+impl HaiyamaOperation {
+    pub fn to_json(&self) -> serde_json::Value {
+        match self {
+            HaiyamaOperation::Add(hai_vec) => {
+                let mut hai_string_vec = vec![];
+                for i in hai_vec {
+                    hai_string_vec.push(i.to_string());
+                }
+                json!({
+                    "operation": "add",
+                    "hai": hai_string_vec,
+                })
+            }
+            HaiyamaOperation::Discard(hai_vec) => {
+                let mut hai_string_vec = vec![];
+                for i in hai_vec {
+                    hai_string_vec.push(i.to_string());
+                }
+                json!({
+                    "operation": "discard",
+                    "hai": hai_string_vec,
+                })
+            }
+        }
+    }
+}
+
+impl Operation {
+    pub fn to_json(&self) -> serde_json::Value {
+        match self {
+            Operation::Tehai(tehai_operation) => json!({
+                "object": "tehai",
+                "operation": tehai_operation.to_json(),
+            }),
+            Operation::Haiyama {
+                kind,
+                haiyama_sensitive,
+            } => json!({
+                "object": "tehai",
+                "operation": kind.to_json(),
+                "haiyama_sensitive": haiyama_sensitive,
+            }),
+        }
+    }
+}
+
 impl GameManager {
     /// Create a instance of GameManager.
     pub fn new(player_number: PlayerNumber) -> Self {
@@ -619,7 +739,7 @@ impl GameManager {
             Operation::Tehai(TehaiOperation::Naku {
                 kind:
                     Naku::Chii {
-                        juntsu: juntsu @ Mentsu::Juntsu(a, b, c),
+                        juntsu: juntsu @ Mentsu::Juntsu(..),
                         nakihai,
                     },
                 ..

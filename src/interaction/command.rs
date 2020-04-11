@@ -11,6 +11,8 @@ pub enum Command {
     Back { haiyama_sensitive: bool },
     State,
     Display,
+    History,
+    Help,
     Exit,
 }
 
@@ -28,6 +30,8 @@ impl Command {
                 haiyama_sensitive: false,
             }),
             "d" | "display" => Ok(Command::Display),
+            "log" | "history" => Ok(Command::History),
+            "h" | "help" => Ok(Command::Help),
             "3pl" | "3-player" => Ok(Command::PlayerNumber(game::PlayerNumber::Three)),
             "4pl" | "4-player" => Ok(Command::PlayerNumber(game::PlayerNumber::Four)),
             "std" | "standard" => Ok(Command::OutputFormat(OutputFormat::Standard)),

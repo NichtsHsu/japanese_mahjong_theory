@@ -17,16 +17,24 @@ pub enum OutputFormat {
 }
 
 impl Controller {
-    pub fn new(output_format: OutputFormat) -> Self {
+    pub fn new(
+        output_format: OutputFormat,
+        player_number: game::PlayerNumber,
+        interactive: bool,
+    ) -> Self {
         if let OutputFormat::Standard = output_format {
             print!(">>> ");
             stdout().flush().unwrap();
         }
 
         Self {
-            game_manager: None,
-            player_number: game::PlayerNumber::Four,
-            output_format: OutputFormat::Standard,
+            game_manager: if interactive {
+                Some(game::GameManager::new(player_number))
+            } else {
+                None
+            },
+            player_number,
+            output_format,
         }
     }
 

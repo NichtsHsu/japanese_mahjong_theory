@@ -247,7 +247,7 @@ impl Controller {
                     match self.output_format {
                         OutputFormat::Standard => {
                             let mut string = String::from("Operation History");
-                            for (id, (op, state)) in iter.enumerate() {
+                            for (id, (op, state, _)) in iter.enumerate() {
                                 string += &format!(
                                     "\n[{}]:\t\tState: {:?}\n\t\tOperation: {:?}",
                                     id, state, op
@@ -257,7 +257,7 @@ impl Controller {
                         }
                         OutputFormat::Json => {
                             let mut json_vec = vec![];
-                            for (op, state) in iter {
+                            for (op, state, _) in iter {
                                 json_vec.push(json!({
                                     "operation": op.to_json(),
                                     "state": format!("{:?}", state),

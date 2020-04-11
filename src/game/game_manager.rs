@@ -11,7 +11,7 @@ pub struct GameManager {
     sutehai_type: BTreeSet<Hai>,
     pub state: State,
     player_number: PlayerNumber,
-    history: Vec<(Operation, State)>,
+    history: Vec<(Operation, State, BTreeSet<Hai>)>,
 }
 
 /// Type of kan.
@@ -241,7 +241,7 @@ impl GameManager {
     }
 
     /// Return operation history.
-    pub fn history(&self) -> &Vec<(Operation, State)> {
+    pub fn history(&self) -> &Vec<(Operation, State, BTreeSet<Hai>)> {
         &self.history
     }
 
@@ -266,12 +266,12 @@ impl GameManager {
             State::LackOneHai => self.operate_lack_one_hai(&mut op)?,
             State::WaitForRinshanhai => self.operate_wait_for_rinshanhai(&op)?,
         }
-        self.history.push((op, last_state));
+        self.history.push((op, last_state, self.sutehai_type.clone()));
         Ok(())
     }
 
     pub fn back(&mut self, haiyama_sensitive: bool) -> Result<(Operation, State), String> {
-        let (op, last_state) = self
+        let (op, last_state, sutehai_type) = self
             .history
             .pop()
             .ok_or("No more operation history.".to_string())?;
@@ -283,10 +283,11 @@ impl GameManager {
         } {
             Ok(_) => {
                 self.state = last_state;
+                self.sutehai_type = sutehai_type;
                 Ok((op, last_state))
             }
             Err(error) => {
-                self.history.push((op, last_state));
+                self.history.push((op, last_state, sutehai_type));
                 Err(error)
             }
         }

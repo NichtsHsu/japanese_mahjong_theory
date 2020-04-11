@@ -1,10 +1,8 @@
 #![feature(bindings_after_at)]
 #![forbid(unsafe_code)]
-#![warn(missing_docs)]
 
 mod game;
 mod interaction;
-
 use std::{io::stdin, process};
 
 fn main() {

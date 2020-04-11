@@ -182,7 +182,20 @@ impl Controller {
                     )));
                 }
             },
-            Command::Back { haiyama_sensitive } => {}
+            Command::Back { haiyama_sensitive } => match &mut self.game_manager {
+                Some(game_manager) => {
+                    let (op, state) = game_manager.back(haiyama_sensitive)?;
+                    return Ok(Some(format!(
+                        "Undo operation: {:?}\nBack to state: {:?}",
+                        op, state
+                    )));
+                }
+                None => {
+                    return Err(
+                        "Can not execute interactive command at non-interactive mode.".to_string(),
+                    );
+                }
+            },
             Command::State => match &self.game_manager {
                 Some(game_manager) => {
                     return Ok(Some(format!(
@@ -192,6 +205,27 @@ impl Controller {
                             OutputFormat::Json => game_manager.to_json().to_string(),
                         }
                     )))
+                }
+                None => {
+                    return Err(
+                        "Can not execute interactive command at non-interactive mode.".to_string(),
+                    );
+                }
+            },
+            Command::Display => match &self.game_manager {
+                Some(game_manager) => {
+                    if let game::State::FullHai = game_manager.state {
+                        let tehai = game_manager.tehai().ok_or("Not initialized.".to_string())?;
+                        let (shanten, conditions) = game_manager.tehai_analyze()?;
+                        return Ok(Some(print_machi(
+                            &tehai,
+                            shanten,
+                            conditions,
+                            self.output_format,
+                        )));
+                    } else {
+                        return Err("Can only analyze tehai when full with hai.".to_string());
+                    }
                 }
                 None => {
                     return Err(

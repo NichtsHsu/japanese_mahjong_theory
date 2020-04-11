@@ -421,6 +421,129 @@ impl Tehai {
         }
     }
 
+    /// Undo a operation chii.
+    pub fn de_chii(&mut self, juntsu: &Mentsu, nakihai: &Hai) -> Result<(), String> {
+        if let Mentsu::Juntsu(a, b, c) = juntsu {
+            let mut index = None;
+            for (i, mentsu) in self.fuuro.iter().enumerate() {
+                if mentsu == juntsu {
+                    index = Some(i);
+                    break;
+                }
+            }
+            if let Some(index) = index {
+                self.fuuro.remove(index);
+                for hai in vec![a, b, c] {
+                    if hai != nakihai {
+                        self.juntehai.push(*hai);
+                    }
+                }
+                self.juntehai.sort();
+                Ok(())
+            } else {
+                Err("Logic error: can not find juntsu in fuuro.".to_string())
+            }
+        } else {
+            Err("Logic error: Tehai::de_chii() can only accept Mentsu::Juntsu.".to_string())
+        }
+    }
+
+    /// Undo a operation pon.
+    pub fn de_pon(&mut self, koutsu: &Mentsu) -> Result<(), String> {
+        if let Mentsu::Koutsu(hai) = koutsu {
+            let mut index = None;
+            for (i, mentsu) in self.fuuro.iter().enumerate() {
+                if mentsu == koutsu {
+                    index = Some(i);
+                    break;
+                }
+            }
+            if let Some(index) = index {
+                self.fuuro.remove(index);
+                for _ in 0..2 {
+                    self.juntehai.push(*hai);
+                }
+                self.juntehai.sort();
+                Ok(())
+            } else {
+                Err("Logic error: can not find koutsu in fuuro.".to_string())
+            }
+        } else {
+            Err("Logic error: Tehai::de_pon() can only accept Mentsu::Koutsu.".to_string())
+        }
+    }
+
+    /// Undo a operation kan.
+    pub fn de_kan(&mut self, kan: &Kan) -> Result<(), String> {
+        fn discard_kantsu(fuuro: &mut Vec<Mentsu>, kantsu: &Mentsu) -> Result<(), String> {
+            let mut index = None;
+            for (i, mentsu) in fuuro.iter().enumerate() {
+                if mentsu == kantsu {
+                    index = Some(i);
+                    break;
+                }
+            }
+            if let Some(index) = index {
+                fuuro.remove(index);
+                Ok(())
+            } else {
+                Err("Logic error: can not find kantsu in fuuro.".to_string())
+            }
+        }
+
+        let backup = self.clone();
+        let rinshanhai = match kan {
+            Kan::Daiminkan { kantsu, rinshanhai } => {
+                if let Mentsu::Kantsu(hai) = kantsu {
+                    discard_kantsu(&mut self.fuuro, kantsu)?;
+                    for _ in 0..3 {
+                        self.juntehai.push(*hai);
+                    }
+                } else {
+                    return Err(
+                        "Logic error: interaction::Kan can only include Kantsu.".to_string()
+                    );
+                }
+                rinshanhai
+            }
+            Kan::Ankan { kantsu, rinshanhai } => {
+                if let Mentsu::Kantsu(hai) = kantsu {
+                    discard_kantsu(&mut self.fuuro, kantsu)?;
+                    for _ in 0..4 {
+                        self.juntehai.push(*hai);
+                    }
+                } else {
+                    return Err(
+                        "Logic error: interaction::Kan can only include Kantsu.".to_string()
+                    );
+                }
+                rinshanhai
+            }
+            Kan::Kakan { kantsu, rinshanhai } => {
+                if let Mentsu::Kantsu(hai) = kantsu {
+                    discard_kantsu(&mut self.fuuro, kantsu)?;
+                    self.fuuro.push(Mentsu::Koutsu(*hai));
+                    self.juntehai.push(*hai);
+                } else {
+                    return Err(
+                        "Logic error: interaction::Kan can only include Kantsu.".to_string()
+                    );
+                }
+                rinshanhai
+            }
+            _ => {
+                return Err("Logic error: Tehai::de_kan() can not accept Kan::Unknown.".to_string())
+            }
+        };
+        if let Some(rinshanhai) = rinshanhai {
+            if let Err(error) = self.discard(rinshanhai) {
+                *self = backup;
+                return Err(error);
+            }
+        }
+        Ok(())
+    }
+
     /// Print self to json.
     pub fn to_json(&self) -> serde_json::Value {
         let mut juntehai_string_vec = vec![];

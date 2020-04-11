@@ -1,4 +1,4 @@
-use super::{Hai, Mentsu, PlayerNumber, Tehai};
+use super::{Hai, PlayerNumber};
 use serde_json::json;
 use std::{collections::BTreeMap, ops::Index};
 
@@ -99,12 +99,6 @@ impl Haiyama {
         }
 
         Ok(())
-    }
-
-    /// Add one hai to haiyama, without limit.
-    pub fn force_add(&mut self, hai: &Hai) {
-        let number = self.map[hai];
-        self.map.insert(*hai, number + 1);
     }
 
     /// Print self to json.

@@ -120,6 +120,7 @@ impl GameManager {
         &self.sutehai_type
     }
 
+    /// Return operation history.
     pub fn history(&self) -> &Vec<(Operation, State)> {
         &self.history
     }
@@ -147,6 +148,28 @@ impl GameManager {
         }
         self.history.push((op, last_state));
         Ok(())
+    }
+
+    pub fn back(&mut self, haiyama_sensitive: bool) -> Result<(Operation, State), String> {
+        let (op, last_state) = self
+            .history
+            .pop()
+            .ok_or("No more operation history.".to_string())?;
+        match match last_state {
+            State::WaitToInit => self.back_wait_to_init(&op, haiyama_sensitive),
+            State::FullHai => self.back_full_hai(&op, haiyama_sensitive),
+            State::LackOneHai => self.back_lack_one_hai(&op, haiyama_sensitive),
+            State::WaitForRinshanhai => self.back_wait_for_rinshanhai(&op, haiyama_sensitive),
+        } {
+            Ok(_) => {
+                self.state = last_state;
+                Ok((op, last_state))
+            }
+            Err(error) => {
+                self.history.push((op, last_state));
+                Err(error)
+            }
+        }
     }
 
     /// Print self to json.
@@ -475,6 +498,253 @@ impl GameManager {
                     op, self.state
                 ))
             }
+        }
+        Ok(())
+    }
+
+    fn back_wait_to_init(&mut self, op: &Operation, haiyama_sensitive: bool) -> Result<(), String> {
+        match op {
+            Operation::Tehai(TehaiOperation::Initialize(tehai)) => {
+                if let Err(error) = self
+                    .haiyama
+                    .add_with_vec(&tehai.juntehai, haiyama_sensitive)
+                {
+                    if haiyama_sensitive {
+                        return Err(error);
+                    }
+                }
+                self.tehai = None;
+                self.state = State::WaitToInit;
+            }
+            Operation::Haiyama {
+                kind: HaiyamaOperation::Add(hai_vec),
+                ..
+            } => {
+                if let Err(error) = self.haiyama.discard_with_vec(hai_vec, haiyama_sensitive) {
+                    if haiyama_sensitive {
+                        return Err(error);
+                    }
+                }
+            }
+            Operation::Haiyama {
+                kind: HaiyamaOperation::Discard(hai_vec),
+                ..
+            } => {
+                if let Err(error) = self.haiyama.add_with_vec(hai_vec, haiyama_sensitive) {
+                    if haiyama_sensitive {
+                        return Err(error);
+                    }
+                }
+            }
+            _ => return Err(format!("Logic error: confused with impossible state.")),
+        }
+        Ok(())
+    }
+
+    fn back_full_hai(&mut self, op: &Operation, haiyama_sensitive: bool) -> Result<(), String> {
+        match op {
+            Operation::Tehai(TehaiOperation::Discard(hai)) => {
+                self.tehai.as_mut().unwrap().juntehai.push(*hai);
+                self.tehai.as_mut().unwrap().juntehai.sort();
+            }
+            Operation::Tehai(TehaiOperation::Naku {
+                kind: Naku::Kan(kan),
+                ..
+            }) => {
+                let backup = self.haiyama.clone();
+                if let Kan::Daiminkan {
+                    kantsu: Mentsu::Kantsu(hai),
+                    ..
+                } = kan
+                {
+                    if let Err(error) = self.haiyama.add(hai) {
+                        if haiyama_sensitive {
+                            return Err(error);
+                        }
+                    }
+                }
+                if let Some(rinshanhai) = match kan {
+                    Kan::Daiminkan { rinshanhai, .. } => rinshanhai,
+                    Kan::Kakan { rinshanhai, .. } => rinshanhai,
+                    Kan::Ankan { rinshanhai, .. } => rinshanhai,
+                    _ => {
+                        self.haiyama = backup;
+                        return Err(
+                            "Logic error: Tehai::de_kan() can not accept Kan::Unknown.".to_string()
+                        );
+                    }
+                } {
+                    if let Err(error) = self.haiyama.add(rinshanhai) {
+                        if haiyama_sensitive {
+                            self.haiyama = backup;
+                            return Err(error);
+                        }
+                    }
+                }
+                if let Err(error) = self.tehai.as_mut().unwrap().de_kan(kan) {
+                    self.haiyama = backup;
+                    return Err(error);
+                }
+            }
+            Operation::Haiyama {
+                kind: HaiyamaOperation::Add(hai_vec),
+                ..
+            } => {
+                if let Err(error) = self.haiyama.discard_with_vec(hai_vec, haiyama_sensitive) {
+                    if haiyama_sensitive {
+                        return Err(error);
+                    }
+                }
+            }
+            Operation::Haiyama {
+                kind: HaiyamaOperation::Discard(hai_vec),
+                ..
+            } => {
+                if let Err(error) = self.haiyama.add_with_vec(hai_vec, haiyama_sensitive) {
+                    if haiyama_sensitive {
+                        return Err(error);
+                    }
+                }
+            }
+            _ => return Err(format!("Logic error: confused with impossible state.")),
+        }
+        Ok(())
+    }
+
+    fn back_lack_one_hai(&mut self, op: &Operation, haiyama_sensitive: bool) -> Result<(), String> {
+        match op {
+            Operation::Tehai(TehaiOperation::Add { hai, .. }) => {
+                self.tehai.as_mut().unwrap().discard(hai)?;
+            }
+            Operation::Tehai(TehaiOperation::Naku {
+                kind:
+                    Naku::Chii {
+                        juntsu: juntsu @ Mentsu::Juntsu(a, b, c),
+                        nakihai,
+                    },
+                ..
+            }) => {
+                let backup = self.haiyama.clone();
+
+                if let Err(error) = self.haiyama.add(nakihai) {
+                    if haiyama_sensitive {
+                        return Err(error);
+                    }
+                }
+                if let Err(error) = self.tehai.as_mut().unwrap().de_chii(juntsu, nakihai) {
+                    self.haiyama = backup;
+                    return Err(error);
+                }
+            }
+            Operation::Tehai(TehaiOperation::Naku {
+                kind: Naku::Pon(koutsu @ Mentsu::Koutsu(hai)),
+                ..
+            }) => {
+                let backup = self.haiyama.clone();
+                if let Err(error) = self.haiyama.add(hai) {
+                    if haiyama_sensitive {
+                        return Err(error);
+                    }
+                }
+                if let Err(error) = self.tehai.as_mut().unwrap().de_pon(koutsu) {
+                    self.haiyama = backup;
+                    return Err(error);
+                }
+            }
+            Operation::Tehai(TehaiOperation::Naku {
+                kind: Naku::Kan(kan),
+                ..
+            }) => {
+                let backup = self.haiyama.clone();
+                if let Kan::Daiminkan {
+                    kantsu: Mentsu::Kantsu(hai),
+                    ..
+                } = kan
+                {
+                    if let Err(error) = self.haiyama.add(hai) {
+                        if haiyama_sensitive {
+                            return Err(error);
+                        }
+                    }
+                }
+                if let Some(rinshanhai) = match kan {
+                    Kan::Daiminkan { rinshanhai, .. } => rinshanhai,
+                    Kan::Kakan { rinshanhai, .. } => rinshanhai,
+                    Kan::Ankan { rinshanhai, .. } => rinshanhai,
+                    _ => {
+                        self.haiyama = backup;
+                        return Err(
+                            "Logic error: Tehai::de_kan() can not accept Kan::Unknown.".to_string()
+                        );
+                    }
+                } {
+                    if let Err(error) = self.haiyama.add(rinshanhai) {
+                        if haiyama_sensitive {
+                            self.haiyama = backup;
+                            return Err(error);
+                        }
+                    }
+                }
+                if let Err(error) = self.tehai.as_mut().unwrap().de_kan(kan) {
+                    self.haiyama = backup;
+                    return Err(error);
+                }
+            }
+            Operation::Haiyama {
+                kind: HaiyamaOperation::Add(hai_vec),
+                ..
+            } => {
+                if let Err(error) = self.haiyama.discard_with_vec(hai_vec, haiyama_sensitive) {
+                    if haiyama_sensitive {
+                        return Err(error);
+                    }
+                }
+            }
+            Operation::Haiyama {
+                kind: HaiyamaOperation::Discard(hai_vec),
+                ..
+            } => {
+                if let Err(error) = self.haiyama.add_with_vec(hai_vec, haiyama_sensitive) {
+                    if haiyama_sensitive {
+                        return Err(error);
+                    }
+                }
+            }
+            _ => return Err(format!("Logic error: confused with impossible state.")),
+        }
+        Ok(())
+    }
+
+    fn back_wait_for_rinshanhai(
+        &mut self,
+        op: &Operation,
+        haiyama_sensitive: bool,
+    ) -> Result<(), String> {
+        match op {
+            Operation::Tehai(TehaiOperation::Add { hai, .. }) => {
+                self.tehai.as_mut().unwrap().discard(hai)?;
+            }
+            Operation::Haiyama {
+                kind: HaiyamaOperation::Add(hai_vec),
+                ..
+            } => {
+                if let Err(error) = self.haiyama.discard_with_vec(hai_vec, haiyama_sensitive) {
+                    if haiyama_sensitive {
+                        return Err(error);
+                    }
+                }
+            }
+            Operation::Haiyama {
+                kind: HaiyamaOperation::Discard(hai_vec),
+                ..
+            } => {
+                if let Err(error) = self.haiyama.add_with_vec(hai_vec, haiyama_sensitive) {
+                    if haiyama_sensitive {
+                        return Err(error);
+                    }
+                }
+            }
+            _ => return Err(format!("Logic error: confused with impossible state.")),
         }
         Ok(())
     }

@@ -10,6 +10,7 @@ pub enum Command {
     GameOperation(game::Operation),
     Back { haiyama_sensitive: bool },
     State,
+    Display,
     Exit,
 }
 
@@ -26,6 +27,7 @@ impl Command {
             "b!" | "back!" => Ok(Command::Back {
                 haiyama_sensitive: false,
             }),
+            "d" | "display" => Ok(Command::Display),
             "3pl" | "3-player" => Ok(Command::PlayerNumber(game::PlayerNumber::Three)),
             "4pl" | "4-player" => Ok(Command::PlayerNumber(game::PlayerNumber::Four)),
             "std" | "standard" => Ok(Command::OutputFormat(OutputFormat::Standard)),

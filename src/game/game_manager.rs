@@ -245,10 +245,12 @@ impl GameManager {
         &self.history
     }
 
+    /// Return the reference of tehai.
     pub fn tehai(&self) -> Option<&Tehai> {
         return self.tehai.as_ref();
     }
 
+    /// Return the analysis of tehai.
     pub fn tehai_analyze(&self) -> Result<(i32, Vec<MachiCondition>), String> {
         let tehai = self.tehai.as_ref().ok_or("Not initialized.".to_string())?;
         tehai.analyze(self.player_number, Some(&self))
@@ -268,6 +270,7 @@ impl GameManager {
         Ok(())
     }
 
+    /// Undo last operation.
     pub fn back(&mut self, haiyama_sensitive: bool) -> Result<(Operation, State), String> {
         let (op, last_state, sutehai_type) = self
             .history

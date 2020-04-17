@@ -140,16 +140,14 @@ impl Tehai {
             hai_in_mentsu_stash: &mut Vec<Hai>,
             output: &mut Vec<Mentsu>,
         ) -> Result<(), String> {
-            if let Some(mentsu) = Mentsu::new(hai_in_mentsu_stash, player_number) {
-                output.push(mentsu);
-                hai_in_mentsu_stash.clear();
-                Ok(())
-            } else {
-                Err(format!(
-                    "Not a valid meld on '[]' before index {}.",
-                    char_index
-                ))
-            }
+            let mentsu = Mentsu::new(hai_in_mentsu_stash, player_number).ok_or(format!(
+                "Not a valid meld on '[]' before index {}.",
+                char_index
+            ))?;
+
+            output.push(mentsu);
+            hai_in_mentsu_stash.clear();
+            Ok(())
         }
 
         let mut juntehai = vec![];
@@ -431,18 +429,16 @@ impl Tehai {
                     break;
                 }
             }
-            if let Some(index) = index {
-                self.fuuro.remove(index);
-                for hai in vec![a, b, c] {
-                    if hai != nakihai {
-                        self.juntehai.push(*hai);
-                    }
+
+            let index = index.ok_or("Logic error: can not find juntsu in fuuro.".to_string())?;
+            self.fuuro.remove(index);
+            for hai in vec![a, b, c] {
+                if hai != nakihai {
+                    self.juntehai.push(*hai);
                 }
-                self.juntehai.sort();
-                Ok(())
-            } else {
-                Err("Logic error: can not find juntsu in fuuro.".to_string())
             }
+            self.juntehai.sort();
+            Ok(())
         } else {
             Err("Logic error: Tehai::de_chii() can only accept Mentsu::Juntsu.".to_string())
         }
@@ -458,16 +454,14 @@ impl Tehai {
                     break;
                 }
             }
-            if let Some(index) = index {
-                self.fuuro.remove(index);
-                for _ in 0..2 {
-                    self.juntehai.push(*hai);
-                }
-                self.juntehai.sort();
-                Ok(())
-            } else {
-                Err("Logic error: can not find koutsu in fuuro.".to_string())
+
+            let index = index.ok_or("Logic error: can not find koutsu in fuuro.".to_string())?;
+            self.fuuro.remove(index);
+            for _ in 0..2 {
+                self.juntehai.push(*hai);
             }
+            self.juntehai.sort();
+            Ok(())
         } else {
             Err("Logic error: Tehai::de_pon() can only accept Mentsu::Koutsu.".to_string())
         }
@@ -483,12 +477,10 @@ impl Tehai {
                     break;
                 }
             }
-            if let Some(index) = index {
-                fuuro.remove(index);
-                Ok(())
-            } else {
-                Err("Logic error: can not find kantsu in fuuro.".to_string())
-            }
+
+            let index = index.ok_or("Logic error: can not find kantsu in fuuro.".to_string())?;
+            fuuro.remove(index);
+            Ok(())
         }
 
         let backup = self.clone();

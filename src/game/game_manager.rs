@@ -250,11 +250,8 @@ impl GameManager {
     }
 
     pub fn tehai_analyze(&self) -> Result<(i32, Vec<MachiCondition>), String> {
-        if let Some(tehai) = &self.tehai {
-            tehai.analyze(self.player_number, Some(&self))
-        } else {
-            Err("Not initialized.".to_string())
-        }
+        let tehai = self.tehai.as_ref().ok_or("Not initialized.".to_string())?;
+        tehai.analyze(self.player_number, Some(&self))
     }
 
     /// Main function to control the game.
@@ -266,7 +263,8 @@ impl GameManager {
             State::LackOneHai => self.operate_lack_one_hai(&mut op)?,
             State::WaitForRinshanhai => self.operate_wait_for_rinshanhai(&op)?,
         }
-        self.history.push((op, last_state, self.sutehai_type.clone()));
+        self.history
+            .push((op, last_state, self.sutehai_type.clone()));
         Ok(())
     }
 

@@ -1,6 +1,6 @@
 # Japanese Mahjong Theory
 
-日麻牌理分析器
+日麻牌理分析器。[![996.icu](https://img.shields.io/badge/link-996.icu-red.svg)](https://996.icu)
 
 用来练手Rust的项目。
 

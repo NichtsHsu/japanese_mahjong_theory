@@ -235,7 +235,7 @@ impl Hai {
     /// `Souzu(9).next()` will be `Some(Manzu(1))`, `Some(Pinzu(1))` and
     /// `Some(souzu(1))`, `Jihai(4).next()` will be `Some(Jihai(1))`,
     /// `Jihai(7).next()` will be `Some(Jihai(5))`. Otherwise, `Manzu(1).next()`,
-    /// `Pinzu(9).next()`, `Souzu(9).next()` and `Jihai(9).next()` will
+    /// `Pinzu(9).next()`, `Souzu(9).next()` and `Jihai(7).next()` will
     /// all be `None`.
     ///
     /// # Japanese

@@ -1,4 +1,3 @@
-#![feature(bindings_after_at)]
 #![forbid(unsafe_code)]
 
 mod game;

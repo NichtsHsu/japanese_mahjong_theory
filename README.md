@@ -29,9 +29,9 @@
 
 ## 编译
 
-因为使用了一个Unstable特性，要求使用Nightly版本的Rust编译。
+因为使用了 bindings_after_at 特性，该特性在 1.54.0 之后才 stable，因此要求使用大于该版本的 rust。
 
-然后`cargo build --release`就完事了。
+然后 `cargo build --release` 就完事了。
 
 ## 使用
 

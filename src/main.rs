@@ -19,7 +19,7 @@ fn run_application() -> Result<(), ()> {
         .author("Nichts Hsu <NichtsVonChaos@gmail.com>")
         .arg(
             Arg::with_name("format")
-                .short("f")
+                .short('f')
                 .long("format")
                 .takes_value(true)
                 .value_name("format_type")
@@ -27,7 +27,7 @@ fn run_application() -> Result<(), ()> {
         )
         .arg(
             Arg::with_name("players")
-                .short("p")
+                .short('p')
                 .long("player")
                 .takes_value(true)
                 .value_name("players_number")
@@ -35,7 +35,7 @@ fn run_application() -> Result<(), ()> {
         )
         .arg(
             Arg::with_name("interactive")
-                .short("i")
+                .short('i')
                 .long("interactive")
                 .help("Start with interactive mode"),
         )

@@ -1,7 +1,6 @@
 use super::Command;
 use crate::game;
 use serde_json::json;
-use std::io::{stdout, Write};
 
 #[derive(Clone, Debug)]
 pub struct Controller {
@@ -22,11 +21,6 @@ impl Controller {
         player_number: game::PlayerNumber,
         interactive: bool,
     ) -> Self {
-        if let OutputFormat::Standard = output_format {
-            print!(">>> ");
-            stdout().flush().unwrap();
-        }
-
         Self {
             game_manager: if interactive {
                 Some(game::GameManager::new(player_number))
@@ -76,12 +70,6 @@ impl Controller {
                 OutputFormat::Json => println!("{}", json!({ "error": error })),
             },
             _ => (),
-        }
-        if !*exit {
-            if let OutputFormat::Standard = self.output_format {
-                print!(">>> ");
-                stdout().flush().unwrap();
-            }
         }
     }
 

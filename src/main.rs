@@ -3,7 +3,7 @@
 mod game;
 mod interaction;
 use clap::Parser;
-use std::{io::stdin, process};
+use rustyline::{self, DefaultEditor, error::ReadlineError};
 
 #[derive(Parser, Debug)]
 #[command(name = "Japanese Mahjong Theory Shell")]
@@ -19,14 +19,7 @@ struct Args {
     interactive: bool,
 }
 
-fn main() {
-    process::exit(match run_application() {
-        Ok(_) => 0,
-        Err(_) => 1,
-    })
-}
-
-fn run_application() -> Result<(), ()> {
+fn main() -> Result<(), String> {
     // Handle program arguments.
     let args = Args::parse();
 
@@ -35,17 +28,13 @@ fn run_application() -> Result<(), ()> {
     } else if args.format_type == "json" {
         interaction::OutputFormat::Json
     } else {
-        println!("Unknown format type: {}.", args.format_type);
-        return Err(());
+        return Err(format!("Unknown format type: {}.", args.format_type));
     };
 
     let player_number = match args.players_number {
         3 => game::PlayerNumber::Three,
         4 => game::PlayerNumber::Four,
-        _ => {
-            println!("Not support {}-players mode.", args.players_number);
-            return Err(());
-        }
+        _ => return Err(format!("Not support {}-players mode.", args.players_number)),
     };
 
     let interactive = args.interactive;
@@ -53,23 +42,39 @@ fn run_application() -> Result<(), ()> {
     // Initialize controller.
     let mut controller = interaction::Controller::new(output_format, player_number, interactive);
 
+    // Initialize RustyLine.
+    let mut rl =
+        DefaultEditor::new().map_err(|e| format!("Failed to initialize RustyLine: {e}."))?;
+
     // Main loop
     loop {
-        let mut input = String::new();
-        if let Err(_) = stdin().read_line(&mut input) {
-            println!(
-                "{}",
-                match controller.output_format() {
+        let prompt = match controller.output_format() {
+            interaction::OutputFormat::Standard => ">>> ",
+            interaction::OutputFormat::Json => "",
+        };
+        match rl.readline(prompt) {
+            Ok(input) => {
+                _ = rl.add_history_entry(input.as_str());
+                let mut exit = false;
+                controller.execute(input.trim().to_string(), &mut exit);
+                if exit {
+                    break Ok(());
+                }
+            }
+            Err(ReadlineError::Interrupted) => {
+                println!("Ctrl-C detected, program exited.");
+                break Ok(());
+            },
+            Err(ReadlineError::Eof) => {
+                println!("Ctrl-D detected, program exited.");
+                break Ok(());
+            },
+            Err(_) => {
+                break Err(String::from(match controller.output_format() {
                     interaction::OutputFormat::Standard => "Failed to read input.",
                     interaction::OutputFormat::Json => "{\"error\":\"Failed to read input.\"}",
-                }
-            );
-            break Err(());
-        }
-        let mut exit = false;
-        controller.execute(input.trim().to_string(), &mut exit);
-        if exit {
-            break Ok(());
+                }));
+            }
         }
     }
 }

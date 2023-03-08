@@ -8,7 +8,7 @@ use rustyline::{self, DefaultEditor, error::ReadlineError};
 #[derive(Parser, Debug)]
 #[command(name = "Japanese Mahjong Theory Shell")]
 #[command(author = "Nichts Hsu <NichtsVonChaos@gmail.com>")]
-#[command(version = "1.18")]
+#[command(version = "1.19")]
 #[command(about = "Japanese Mahjong Theory Shell", long_about = None)]
 struct Args {
     #[arg(short, long, help = "Set output format: standard | json", default_value_t = String::from("standard"))]

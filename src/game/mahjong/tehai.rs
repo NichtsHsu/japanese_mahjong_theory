@@ -15,9 +15,10 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 ///
 /// # Examples
 /// ```rust
+/// use japanese_mahjong_theory::{Tehai, PlayerNumber};
 /// let mut input = String::new();
-/// io::stdin().read_line(&mut input).expect("error: unable to read user input");
-/// println!("{}", mahjong::Tehai::from(input.trim().to_string()));
+/// std::io::stdin().read_line(&mut input).expect("error: unable to read user input");
+/// println!("{:?}", Tehai::new(input.trim(), PlayerNumber::Four).unwrap());
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tehai {
@@ -98,9 +99,10 @@ impl Tehai {
     ///
     /// # Examples
     /// ```rust
-    /// let tehai = Tehai::new("45p8s144m[111z]25m44p3m".to_string(), PlayerNumber::Four);
+    /// use japanese_mahjong_theory::{Tehai, PlayerNumber};
+    /// let tehai = Tehai::new("45p8s144m[111z]25m44p3m", PlayerNumber::Four);
     /// ```
-    pub fn new(string: String, player_number: PlayerNumber) -> Result<Self, String> {
+    pub fn new(string: &str, player_number: PlayerNumber) -> Result<Self, String> {
         fn handle_char_stash(
             hai_type: char,
             hai_type_char_index: usize,

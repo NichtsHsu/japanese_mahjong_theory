@@ -196,7 +196,7 @@ impl Command {
                 }
             }
             _ => Ok(Command::TehaiInput(game::Tehai::new(
-                command,
+                &command,
                 player_number,
             )?)),
         }

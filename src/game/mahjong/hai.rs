@@ -25,7 +25,7 @@ pub enum Hai {
 
 impl Hai {
     /// Parse string to a vec of hai. Order of hai is equal with input string.
-    pub fn from_string_unordered(string: &String, player_number: PlayerNumber) -> Result<Vec<Hai>, String> {
+    pub fn from_string_unordered(string: &str, player_number: PlayerNumber) -> Result<Vec<Hai>, String> {
         fn handle_char_stash(
             hai_type: char,
             hai_type_char_index: usize,

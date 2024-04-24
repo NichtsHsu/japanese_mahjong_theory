@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
-mod game;
-mod interaction;
+pub mod game;
+pub mod interaction;
 use clap::Parser;
 use rustyline::{self, DefaultEditor, error::ReadlineError};
 
